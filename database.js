@@ -42,6 +42,7 @@ function initDatabase() {
         session_time TEXT,
         cost REAL DEFAULT 0,
         description TEXT,
+        available INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -61,14 +62,14 @@ function initDatabase() {
       )
     `);
 
-    // Insert some sample activities
+    // Insert some sample activities (only Tobogganing is available for this trip)
     db.run(`
-      INSERT OR IGNORE INTO activities (id, name, session_time, cost, description)
+      INSERT OR IGNORE INTO activities (id, name, session_time, cost, description, available)
       VALUES 
-        (1, 'Tobogganing', 'Saturday 10:00 AM', 5.00, 'Fun tobogganing session on the slopes'),
-        (2, 'Archery', 'Saturday 2:00 PM', 8.00, 'Archery lessons for beginners'),
-        (3, 'Nature Walk', 'Friday 4:00 PM', 0.00, 'Guided nature walk around the campsite'),
-        (4, 'Campfire Stories', 'Friday 7:00 PM', 0.00, 'Evening campfire with stories and songs')
+        (1, 'Tobogganing', 'Saturday 10:00 AM', 5.00, 'Fun tobogganing session on the slopes', 1),
+        (2, 'Archery', 'Saturday 2:00 PM', 8.00, 'Archery lessons for beginners', 0),
+        (3, 'Nature Walk', 'Friday 4:00 PM', 0.00, 'Guided nature walk around the campsite', 0),
+        (4, 'Campfire Stories', 'Friday 7:00 PM', 0.00, 'Evening campfire with stories and songs', 0)
     `);
 
     console.log('Database initialized successfully');

@@ -172,8 +172,18 @@ function insertMembers(familyId, members, res, access_key) {
     });
 }
 
-// Get all activities
+// Get activities (for parents - only available ones)
 app.get('/api/activities', (req, res) => {
+    db.all('SELECT * FROM activities WHERE available = 1 ORDER BY session_time', [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+// Get all activities including unavailable (admin only)
+app.get('/api/activities/all', (req, res) => {
     db.all('SELECT * FROM activities ORDER BY session_time', [], (err, rows) => {
         if (err) {
             return res.status(500).json({ error: err.message });
@@ -184,16 +194,33 @@ app.get('/api/activities', (req, res) => {
 
 // Create activity (admin)
 app.post('/api/activities', (req, res) => {
-    const { name, session_time, cost, description } = req.body;
+    const { name, session_time, cost, description, available } = req.body;
 
     db.run(
-        `INSERT INTO activities (name, session_time, cost, description) VALUES (?, ?, ?, ?)`,
-        [name, session_time, cost || 0, description || ''],
+        `INSERT INTO activities (name, session_time, cost, description, available) VALUES (?, ?, ?, ?, ?)`,
+        [name, session_time, cost || 0, description || '', available !== undefined ? available : 1],
         function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
             }
             res.json({ success: true, id: this.lastID });
+        }
+    );
+});
+
+// Toggle activity availability (admin)
+app.put('/api/activities/:id/availability', (req, res) => {
+    const { id } = req.params;
+    const { available } = req.body;
+
+    db.run(
+        'UPDATE activities SET available = ? WHERE id = ?',
+        [available ? 1 : 0, id],
+        function (err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ success: true });
         }
     );
 });

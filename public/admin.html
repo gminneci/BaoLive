@@ -33,6 +33,18 @@
             </div>
         </div>
 
+        <!-- Manage Activities -->
+        <div class="card">
+            <h2 style="color: var(--leaf-green); margin-bottom: 20px;">Manage Activities</h2>
+            <p style="color: var(--earth-brown); margin-bottom: 20px;">
+                Toggle which activities are available for parents to sign up for. Only "Available" activities will be
+                shown to parents.
+            </p>
+            <div id="manage-activities-container">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
         <!-- Activity Sign-ups -->
         <div class="card">
             <div class="flex-between mb-20">
@@ -84,9 +96,11 @@
 
         let families = [];
         let activitySignups = [];
+        let allActivities = [];
 
         window.addEventListener('DOMContentLoaded', async () => {
             await loadFamilies();
+            await loadAllActivities();
             await loadActivitySignups();
         });
 
@@ -101,6 +115,95 @@
                 console.error('Error loading families:', error);
                 document.getElementById('families-container').innerHTML =
                     '<p class="alert alert-error">Error loading families</p>';
+            }
+        }
+
+        async function loadAllActivities() {
+            try {
+                const response = await fetch(`${API_URL}/activities/all`);
+                if (response.ok) {
+                    allActivities = await response.json();
+                    renderAllActivities();
+                }
+            } catch (error) {
+                console.error('Error loading activities:', error);
+                document.getElementById('manage-activities-container').innerHTML =
+                    '<p class="alert alert-error">Error loading activities</p>';
+            }
+        }
+
+        function renderAllActivities() {
+            const container = document.getElementById('manage-activities-container');
+
+            if (allActivities.length === 0) {
+                container.innerHTML = '<p>No activities yet. Add one below!</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Activity</th>
+                                <th>Session Time</th>
+                                <th>Cost</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allActivities.map(activity => `
+                                <tr>
+                                    <td><strong>${activity.name}</strong></td>
+                                    <td>${activity.session_time}</td>
+                                    <td>£${activity.cost.toFixed(2)}</td>
+                                    <td>
+                                        <span class="paid-badge ${activity.available ? 'yes' : 'no'}">
+                                            ${activity.available ? 'Available' : 'Unavailable'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        ${activity.available ? `
+                                            <button 
+                                                class="btn btn-warning btn-small" 
+                                                onclick="toggleActivityAvailability(${activity.id}, false)"
+                                            >
+                                                Make Unavailable
+                                            </button>
+                                        ` : `
+                                            <button 
+                                                class="btn btn-primary btn-small" 
+                                                onclick="toggleActivityAvailability(${activity.id}, true)"
+                                            >
+                                                Make Available
+                                            </button>
+                                        `}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function toggleActivityAvailability(activityId, available) {
+            try {
+                const response = await fetch(`${API_URL}/activities/${activityId}/availability`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ available })
+                });
+
+                if (response.ok) {
+                    await loadAllActivities();
+                }
+            } catch (error) {
+                console.error('Error toggling availability:', error);
+                alert('Error updating activity availability');
             }
         }
 
@@ -233,7 +336,7 @@
         </div>
         <p style="margin-top: 20px; color: var(--earth-brown);">
           <strong>Total Sign-ups:</strong> ${activitySignups.length} | 
-          <strong>Total Revenue:</strong> £${activitySignups.reduce((sum, s) => sum + (s.cost * s.children.length), 0).toFixed(2)} | 
+          <strong>Total:</strong> £${activitySignups.reduce((sum, s) => sum + (s.cost * s.children.length), 0).toFixed(2)} | 
           <strong>Paid:</strong> £${activitySignups.filter(s => s.paid).reduce((sum, s) => sum + s.amount_paid, 0).toFixed(2)}
         </p>
       `;

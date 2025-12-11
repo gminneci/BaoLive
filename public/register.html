@@ -163,7 +163,7 @@
 
           <div class="form-group" id="sefton-details-${memberCount}" style="display: ${data?.in_sefton_park ? 'block' : 'none'};">
             <label>Year</label>
-            <select name="member-year-${memberCount}">
+            <select name="member-year-${memberCount}" id="member-year-${memberCount}">
               <option value="">Select Year</option>
               <option value="1" ${data?.year === '1' ? 'selected' : ''}>Year 1</option>
               <option value="2" ${data?.year === '2' ? 'selected' : ''}>Year 2</option>
@@ -173,12 +173,14 @@
               <option value="6" ${data?.year === '6' ? 'selected' : ''}>Year 6</option>
             </select>
 
-            <label style="margin-top: 10px;">Class (if Year 3)</label>
-            <select name="member-class-${memberCount}">
-              <option value="">Select Class</option>
-              <option value="Baobab" ${data?.class === 'Baobab' ? 'selected' : ''}>Baobab</option>
-              <option value="Olive" ${data?.class === 'Olive' ? 'selected' : ''}>Olive</option>
-            </select>
+            <div id="class-selection-${memberCount}" style="display: ${data?.year === '3' ? 'block' : 'none'}; margin-top: 10px;">
+              <label>Class</label>
+              <select name="member-class-${memberCount}">
+                <option value="">Select Class</option>
+                <option value="Baobab" ${data?.class === 'Baobab' ? 'selected' : ''}>Baobab</option>
+                <option value="Olive" ${data?.class === 'Olive' ? 'selected' : ''}>Olive</option>
+              </select>
+            </div>
           </div>
         ` : ''}
       `;
@@ -192,6 +194,15 @@
                     const details = document.getElementById(`sefton-details-${memberCount}`);
                     details.style.display = e.target.checked ? 'block' : 'none';
                 });
+
+                // Add event listener for year dropdown to show/hide class selection
+                const yearDropdown = document.getElementById(`member-year-${memberCount}`);
+                if (yearDropdown) {
+                    yearDropdown.addEventListener('change', (e) => {
+                        const classSelection = document.getElementById(`class-selection-${memberCount}`);
+                        classSelection.style.display = e.target.value === '3' ? 'block' : 'none';
+                    });
+                }
             }
         }
 
