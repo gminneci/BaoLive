@@ -99,28 +99,22 @@
 
         async function loadFamilyData() {
             try {
-            const response = await fetch(`${API_URL}/families/access/${accessKey}`, { cache: 'no-store' });
-                if (response.ok) {
-                    familyData = await response.json();
+                familyData = await fetchJSON(`${API_URL}/families/access/${accessKey}`);
                     document.getElementById('activities-container').classList.remove('hidden');
                     document.getElementById('my-signups').classList.remove('hidden');
-                } else {
-                    document.getElementById('login-prompt').classList.remove('hidden');
-                }
+                
             } catch (error) {
                 console.error('Error loading family data:', error);
                 showAlert('Error loading family data', 'error');
+                document.getElementById('login-prompt').classList.remove('hidden');
             }
         }
 
         async function loadActivities() {
             try {
-            // Pass access_key so we see activities we're signed up for, even if full
-            const response = await fetch(`${API_URL}/activities?access_key=${accessKey}`, { cache: 'no-store' });
-                if (response.ok) {
-                    activities = await response.json();
-                    // Don't render yet - wait for signups to load first
-                }
+                // Pass access_key so we see activities we're signed up for, even if full
+                activities = await fetchJSON(`${API_URL}/activities?access_key=${accessKey}`);
+                // Don't render yet - wait for signups to load first
             } catch (error) {
                 console.error('Error loading activities:', error);
                 showAlert('Error loading activities', 'error');
@@ -129,13 +123,10 @@
 
         async function loadMySignups() {
             try {
-            const response = await fetch(`${API_URL}/activity-signups/family/${accessKey}`, { cache: 'no-store' });
-                if (response.ok) {
-                    mySignups = await response.json();
-                    // Now render activities with pre-selected checkboxes
-                    renderActivities();
-                    renderMySignups();
-                }
+                mySignups = await fetchJSON(`${API_URL}/activity-signups/family/${accessKey}`);
+                // Now render activities with pre-selected checkboxes
+                renderActivities();
+                renderMySignups();
             } catch (error) {
                 console.error('Error loading signups:', error);
             }
@@ -421,7 +412,8 @@
             }
         }
 
-        async function saveAllActivities() {
+        // Removed: superseded by real-time saves and applyChanges
+        /* async function saveAllActivities() {
             const activitiesToSave = [];
             
             // Collect all activities with their selected children
@@ -473,7 +465,7 @@
             } else {
                 showAlert('Error updating some activities. Please try again.', 'error');
             }
-        }
+        } */
 
         async function applyChanges() {
             // Bulk re-save by delegating to per-activity saver for each activity id

@@ -23,3 +23,17 @@ function showAlert(message, type = 'info') {
         alertContainer.innerHTML = '';
     }, 5000);
 }
+
+// Fetch JSON with cache busting and basic error handling
+async function fetchJSON(url, options = {}) {
+    const resp = await fetch(url, { cache: 'no-store', ...options });
+    if (!resp.ok) {
+        let errMsg = resp.statusText;
+        try {
+            const data = await resp.json();
+            errMsg = data.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
+    }
+    return resp.json();
+}
