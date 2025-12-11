@@ -1,7 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
-const fs = require('fs');
 const session = require('express-session');
 const { db, initDatabase } = require('./database');
 
@@ -27,6 +25,34 @@ app.use(session({
     cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 hours
 }));
 
+// DB Promisify Helpers
+const dbGet = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+};
+
+const dbAll = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+};
+
+const dbRun = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function (err) {
+            if (err) reject(err);
+            else resolve({ lastID: this.lastID, changes: this.changes });
+        });
+    });
+};
+
 // Protect /admin.html before static serving
 app.use((req, res, next) => {
     if (req.path === '/admin.html') {
@@ -45,12 +71,12 @@ app.post('/api/auth/signin', (req, res) => {
     if (!password) {
         return res.status(400).json({ error: 'Password required' });
     }
-    
+
     // Check password against environment variable
     if (!ADMIN_PASSWORD || password !== ADMIN_PASSWORD) {
         return res.status(403).json({ error: 'Invalid password' });
     }
-    
+
     // Mark session as authenticated
     req.session.isAdmin = true;
     return res.json({ success: true });
@@ -71,26 +97,11 @@ app.get('/api/auth/session', (req, res) => {
 // Initialize database
 initDatabase();
 
-// Helper function to generate access key from child names
+// --- HELPERS ---
+
 function generateAccessKey(childNames) {
     return childNames.map(name => name.toLowerCase().trim()).sort().join('-');
 }
-
-// Helper function for family query with members (reusable)
-const FAMILY_QUERY = `
-    SELECT f.*, 
-           GROUP_CONCAT(
-             json_object(
-               'id', fm.id,
-               'name', fm.name,
-               'is_child', fm.is_child,
-               'in_sefton_park', fm.in_sefton_park,
-               'year', fm.year,
-               'class', fm.class
-             )
-           ) as members
-    FROM families f
-    LEFT JOIN family_members fm ON f.id = fm.family_id`;
 
 function transformFamilyRow(row) {
     return {
@@ -100,736 +111,515 @@ function transformFamilyRow(row) {
     };
 }
 
-// Helper function to check activity capacity and auto-disable if full
-function checkAndUpdateActivityCapacity(activityId) {
-    // Get activity details
-    db.get('SELECT max_participants FROM activities WHERE id = ?', [activityId], (err, activity) => {
-        if (err || !activity || activity.max_participants === 0) {
-            return; // No capacity limit or error
-        }
+// Unified helper to get family with financials
+// Can filter by 'id', 'access_key', or 'booking_ref'
+async function getFamiliesWithFinancials(filterType = null, filterValue = null) {
+    let whereClause = '';
+    const params = [];
 
-        // Count current participants
-        const query = `
-            SELECT SUM(json_array_length(children)) as total_participants
-            FROM activity_signups
-            WHERE activity_id = ?
-        `;
+    if (filterType && filterValue) {
+        if (filterType === 'id') whereClause = 'WHERE f.id = ?';
+        else if (filterType === 'access_key') whereClause = 'WHERE f.access_key = ?';
+        else if (filterType === 'booking_ref') whereClause = 'WHERE f.booking_ref = ?';
 
-        db.get(query, [activityId], (err, result) => {
-            if (err) return;
+        params.push(filterValue);
+    }
 
-            const currentParticipants = result.total_participants || 0;
+    const query = `
+        SELECT f.*, 
+               GROUP_CONCAT(
+                 json_object(
+                   'id', fm.id,
+                   'name', fm.name,
+                   'is_child', fm.is_child,
+                   'in_sefton_park', fm.in_sefton_park,
+                   'year', fm.year,
+                   'class', fm.class
+                 )
+               ) as members
+        FROM families f
+        LEFT JOIN family_members fm ON f.id = fm.family_id
+        ${whereClause}
+        GROUP BY f.id
+        ORDER BY f.created_at DESC
+    `;
 
-            // Auto-disable if at or over capacity
-            if (currentParticipants >= activity.max_participants) {
-                db.run('UPDATE activities SET available = 0 WHERE id = ?', [activityId], (err) => {
-                    if (!err) {
-                        console.log(`Activity ${activityId} auto-disabled: ${currentParticipants}/${activity.max_participants} participants`);
-                    }
-                });
-            } else {
-                // Re-enable if was full but now has space (e.g., someone cancelled)
-                db.run('UPDATE activities SET available = 1 WHERE id = ?', [activityId], (err) => {
-                    if (!err) {
-                        console.log(`Activity ${activityId} auto-enabled: ${currentParticipants}/${activity.max_participants} participants`);
-                    }
-                });
-            }
-        });
-    });
-}
+    const rows = await dbAll(query, params);
+    if (!rows || rows.length === 0) return [];
 
-// API Routes
+    const families = rows.map(transformFamilyRow);
 
-// Get all families (admin)
-app.get('/api/families', (req, res) => {
-    const query = `${FAMILY_QUERY}
-    GROUP BY f.id
-    ORDER BY f.created_at DESC`;
-
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        
-            // Get payment totals for each family
-            const familiesWithPayments = rows.map(transformFamilyRow);
-            let completed = 0;
-        
-            familiesWithPayments.forEach((family, index) => {
-                // Get total owed for this family
-                const owedQuery = `
-                    SELECT COALESCE(SUM(a.cost * json_array_length(acs.children)), 0) as total_owed
-                    FROM activity_signups acs
-                    JOIN activities a ON acs.activity_id = a.id
-                    WHERE acs.family_id = ?
-                `;
-            
-                db.get(owedQuery, [family.id], (owedErr, owedResult) => {
-                    if (!owedErr) {
-                        family.total_owed = owedResult.total_owed || 0;
-                    
-                        // Get total paid for this family (exclude cancelled payments)
-                        const paidQuery = `
-                            SELECT COALESCE(SUM(amount), 0) as total_paid
-                            FROM payments
-                            WHERE family_id = ? AND cancelled = 0
-                        `;
-                    
-                        db.get(paidQuery, [family.id], (paidErr, paidResult) => {
-                            if (!paidErr) {
-                                family.total_paid = paidResult.total_paid || 0;
-                                family.outstanding = family.total_owed - family.total_paid;
-                            }
-                        
-                            completed++;
-                            if (completed === familiesWithPayments.length) {
-                                res.json(familiesWithPayments);
-                            }
-                        });
-                    } else {
-                        completed++;
-                        if (completed === familiesWithPayments.length) {
-                            res.json(familiesWithPayments);
-                        }
-                    }
-                });
-            });
-        
-            // Handle empty array case
-            if (familiesWithPayments.length === 0) {
-                res.json([]);
-            }
-    });
-});
-
-// Get family by access key
-app.get('/api/families/access/:accessKey', (req, res) => {
-    const { accessKey } = req.params;
-    const query = `${FAMILY_QUERY}
-    WHERE f.access_key = ?
-    GROUP BY f.id`;
-
-    db.get(query, [accessKey], (err, row) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        if (!row) {
-            return res.status(404).json({ error: 'Family not found' });
-        }
-        
-        const family = transformFamilyRow(row);
-        
-        // Get total owed for this family
-        const owedQuery = `
+    // Populate financials for each family
+    // Note: We could do this in a single complex SQL query, but for simplicity/maintainability (SQLite),
+    // we'll fetch totals in parallel.
+    for (const family of families) {
+        // Total Owed
+        const owedRow = await dbGet(`
             SELECT COALESCE(SUM(a.cost * json_array_length(acs.children)), 0) as total_owed
             FROM activity_signups acs
             JOIN activities a ON acs.activity_id = a.id
             WHERE acs.family_id = ?
-        `;
-        
-        db.get(owedQuery, [family.id], (owedErr, owedResult) => {
-            if (owedErr) {
-                return res.status(500).json({ error: owedErr.message });
-            }
-            
-            family.total_owed = owedResult.total_owed || 0;
-            
-            // Get total paid for this family (exclude cancelled payments)
-            const paidQuery = `
-                SELECT COALESCE(SUM(amount), 0) as total_paid
-                FROM payments
-                WHERE family_id = ? AND cancelled = 0
-            `;
-            
-            db.get(paidQuery, [family.id], (paidErr, paidResult) => {
-                if (paidErr) {
-                    return res.status(500).json({ error: paidErr.message });
-                }
-                
-                family.total_paid = paidResult.total_paid || 0;
-                family.outstanding = family.total_owed - family.total_paid;
-                
-                res.json(family);
-            });
-        });
-    });
-});
+        `, [family.id]);
 
-// Get family by booking reference
-app.get('/api/families/booking/:bookingRef', (req, res) => {
-    const { bookingRef } = req.params;
-    const query = `${FAMILY_QUERY}
-    WHERE f.booking_ref = ?
-    GROUP BY f.id`;
+        family.total_owed = owedRow ? owedRow.total_owed : 0;
 
-    db.get(query, [bookingRef], (err, row) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        if (!row) {
-            return res.status(404).json({ error: 'Family not found' });
-        }
-        res.json(transformFamilyRow(row));
-    });
-});
+        // Total Paid
+        const paidRow = await dbGet(`
+            SELECT COALESCE(SUM(amount), 0) as total_paid
+            FROM payments
+            WHERE family_id = ? AND cancelled = 0
+        `, [family.id]);
 
-// Check if booking reference exists
-app.get('/api/families/check/:bookingRef', (req, res) => {
-    const { bookingRef } = req.params;
-    db.get('SELECT id, booking_ref FROM families WHERE booking_ref = ?', [bookingRef], (err, row) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ exists: !!row });
-    });
-});
+        family.total_paid = paidRow ? paidRow.total_paid : 0;
+        family.outstanding = family.total_owed - family.total_paid;
+    }
 
-// Create or update family
-app.post('/api/families', (req, res) => {
-    const { booking_ref, members, camping_type, nights } = req.body;
-
-    // Generate access key from child names
-    const childNames = members.filter(m => m.is_child).map(m => m.name);
-    const access_key = generateAccessKey(childNames);
-
-    // Check if family already exists
-    db.get('SELECT id FROM families WHERE booking_ref = ?', [booking_ref], (err, existing) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-
-        if (existing) {
-            // Update existing family
-            db.run(
-                `UPDATE families SET camping_type = ?, nights = ?, access_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-                [camping_type, JSON.stringify(nights), access_key, existing.id],
-                function (err) {
-                    if (err) {
-                        return res.status(500).json({ error: err.message });
-                    }
-
-                    // Delete old members and insert new ones
-                    db.run('DELETE FROM family_members WHERE family_id = ?', [existing.id], (err) => {
-                        if (err) {
-                            return res.status(500).json({ error: err.message });
-                        }
-
-                        insertMembers(existing.id, members, res, access_key);
-                    });
-                }
-            );
-        } else {
-            // Create new family
-            db.run(
-                `INSERT INTO families (booking_ref, access_key, camping_type, nights) VALUES (?, ?, ?, ?)`,
-                [booking_ref, access_key, camping_type, JSON.stringify(nights)],
-                function (err) {
-                    if (err) {
-                        return res.status(500).json({ error: err.message });
-                    }
-
-                    insertMembers(this.lastID, members, res, access_key);
-                }
-            );
-        }
-    });
-});
-
-function insertMembers(familyId, members, res, access_key) {
-    const stmt = db.prepare(`
-    INSERT INTO family_members (family_id, name, is_child, in_sefton_park, year, class)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-    members.forEach(member => {
-        stmt.run(
-            familyId,
-            member.name,
-            member.is_child ? 1 : 0,
-            member.in_sefton_park ? 1 : 0,
-            member.year || null,
-            member.class || null
-        );
-    });
-
-    stmt.finalize((err) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ success: true, family_id: familyId, access_key });
-    });
+    return families;
 }
 
-// Delete family (admin)
-app.delete('/api/families/:id', (req, res) => {
-    const { id } = req.params;
+// Helper to check activity capacity
+async function checkAndUpdateActivityCapacity(activityId) {
+    try {
+        const activity = await dbGet('SELECT max_participants FROM activities WHERE id = ?', [activityId]);
+        if (!activity || activity.max_participants === 0) return;
 
-    // Delete family members first (cascade should handle this, but being explicit)
-    db.run('DELETE FROM family_members WHERE family_id = ?', [id], (err) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
+        const result = await dbGet(`
+            SELECT SUM(json_array_length(children)) as total_participants
+            FROM activity_signups
+            WHERE activity_id = ?
+        `, [activityId]);
+
+        const currentParticipants = result.total_participants || 0;
+
+        if (currentParticipants >= activity.max_participants) {
+            await dbRun('UPDATE activities SET available = 0 WHERE id = ?', [activityId]);
+            console.log(`Activity ${activityId} auto-disabled: ${currentParticipants}/${activity.max_participants} participants`);
+        } else {
+            await dbRun('UPDATE activities SET available = 1 WHERE id = ?', [activityId]);
+            console.log(`Activity ${activityId} auto-enabled: ${currentParticipants}/${activity.max_participants} participants`);
         }
+    } catch (err) {
+        console.error('Error checking capacity:', err);
+    }
+}
 
-        // Delete activity signups
-        db.run('DELETE FROM activity_signups WHERE family_id = ?', [id], (err) => {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
 
-            // Delete the family
-            db.run('DELETE FROM families WHERE id = ?', [id], function (err) {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                res.json({ success: true, deleted: this.changes });
-            });
-        });
-    });
-});
+// --- API ROUTES ---
 
-// Get activities (for parents - only available ones)
-app.get('/api/activities', (req, res) => {
-    const { access_key } = req.query;
-    
-    // If access_key provided, show activities that are available OR family is signed up for
-    if (access_key) {
-        const query = `
-            SELECT DISTINCT a.* 
-            FROM activities a
-            LEFT JOIN families f ON f.access_key = ?
-            LEFT JOIN activity_signups s ON s.activity_id = a.id AND s.family_id = f.id
-            WHERE a.available = 1 OR s.id IS NOT NULL
-            ORDER BY a.session_time
-        `;
-        db.all(query, [access_key], (err, rows) => {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json(rows);
-        });
-    } else {
-        // No access_key: only show available activities
-        db.all('SELECT * FROM activities WHERE available = 1 ORDER BY session_time', [], (err, rows) => {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json(rows);
-        });
+// Get all families (admin)
+app.get('/api/families', async (req, res) => {
+    try {
+        const families = await getFamiliesWithFinancials();
+        res.json(families);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
-// Get all activities including unavailable (admin only)
-app.get('/api/activities/all', (req, res) => {
-    db.all('SELECT * FROM activities ORDER BY session_time', [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
+// Get family by access key
+app.get('/api/families/access/:accessKey', async (req, res) => {
+    try {
+        const families = await getFamiliesWithFinancials('access_key', req.params.accessKey);
+        if (families.length === 0) {
+            return res.status(404).json({ error: 'Family not found' });
         }
-        res.json(rows);
-    });
+        res.json(families[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Create activity (admin)
+// Get family by booking reference
+app.get('/api/families/booking/:bookingRef', async (req, res) => {
+    try {
+        const families = await getFamiliesWithFinancials('booking_ref', req.params.bookingRef);
+        if (families.length === 0) {
+            return res.status(404).json({ error: 'Family not found' });
+        }
+        res.json(families[0]);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Check if booking reference exists
+app.get('/api/families/check/:bookingRef', async (req, res) => {
+    try {
+        const row = await dbGet('SELECT id FROM families WHERE booking_ref = ?', [req.params.bookingRef]);
+        res.json({ exists: !!row });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create or update family
+app.post('/api/families', async (req, res) => {
+    const { booking_ref, members, camping_type, nights } = req.body;
+
+    try {
+        const childNames = members.filter(m => m.is_child).map(m => m.name);
+        const access_key = generateAccessKey(childNames);
+        const existing = await dbGet('SELECT id FROM families WHERE booking_ref = ?', [booking_ref]);
+
+        let familyId;
+        if (existing) {
+            // Update existing
+            await dbRun(
+                `UPDATE families SET camping_type = ?, nights = ?, access_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                [camping_type, JSON.stringify(nights), access_key, existing.id]
+            );
+
+            // Re-insert members
+            await dbRun('DELETE FROM family_members WHERE family_id = ?', [existing.id]);
+            familyId = existing.id;
+        } else {
+            // Create new
+            const result = await dbRun(
+                `INSERT INTO families (booking_ref, access_key, camping_type, nights) VALUES (?, ?, ?, ?)`,
+                [booking_ref, access_key, camping_type, JSON.stringify(nights)]
+            );
+            familyId = result.lastID;
+        }
+
+        // Insert Members
+        // Note: Prepared statements for multiple inserts
+        const stmt = db.prepare(`
+            INSERT INTO family_members (family_id, name, is_child, in_sefton_park, year, class)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `);
+
+        // We wrap bulk insert in a promise manually as statement execution is synchronous-like in loop but finalized async
+        await new Promise((resolve, reject) => {
+            db.serialize(() => {
+                db.run("BEGIN TRANSACTION");
+                members.forEach(member => {
+                    stmt.run(
+                        familyId,
+                        member.name,
+                        member.is_child ? 1 : 0,
+                        member.in_sefton_park ? 1 : 0,
+                        member.year || null,
+                        member.class || null
+                    );
+                });
+                stmt.finalize();
+                db.run("COMMIT", (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+        });
+
+        res.json({ success: true, family_id: familyId, access_key });
+
+    } catch (err) {
+        await dbRun("ROLLBACK"); // Attempt rollback if error
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete family (admin)
+app.delete('/api/families/:id', async (req, res) => {
+    try {
+        await dbRun('DELETE FROM family_members WHERE family_id = ?', [req.params.id]);
+        await dbRun('DELETE FROM activity_signups WHERE family_id = ?', [req.params.id]);
+        await dbRun('DELETE FROM payments WHERE family_id = ?', [req.params.id]); // Also delete payments
+        const result = await dbRun('DELETE FROM families WHERE id = ?', [req.params.id]);
+
+        res.json({ success: true, deleted: result.changes });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get activities
+app.get('/api/activities', async (req, res) => {
+    const { access_key } = req.query;
+    try {
+        if (access_key) {
+            // Use subquery to avoid complex outer joins if possible, but this is fine
+            // We want available activities, OR activities this family is already signed up for (even if unavailable)
+            const rows = await dbAll(`
+                SELECT DISTINCT a.* 
+                FROM activities a
+                LEFT JOIN families f ON f.access_key = ?
+                LEFT JOIN activity_signups s ON s.activity_id = a.id AND s.family_id = f.id
+                WHERE a.available = 1 OR s.id IS NOT NULL
+                ORDER BY a.session_time
+            `, [access_key]);
+            res.json(rows);
+        } else {
+            const rows = await dbAll('SELECT * FROM activities WHERE available = 1 ORDER BY session_time');
+            res.json(rows);
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Admin activity routes
 const requireAdmin = (req, res, next) => {
     if (req.session.isAdmin) return next();
     return res.status(401).json({ error: 'Unauthorized' });
 };
 
-app.post('/api/activities', requireAdmin, (req, res) => {
+app.get('/api/activities/all', async (req, res) => {
+    try {
+        const rows = await dbAll('SELECT * FROM activities ORDER BY session_time');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/activities', requireAdmin, async (req, res) => {
     const { name, session_time, cost, description, max_participants, available } = req.body;
-
-    db.run(
-        `INSERT INTO activities (name, session_time, cost, description, max_participants, available) VALUES (?, ?, ?, ?, ?, ?)`,
-        [name, session_time, cost || 0, description || '', max_participants || 0, available !== undefined ? available : 1],
-        function (err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ success: true, id: this.lastID });
-        }
-    );
+    try {
+        const result = await dbRun(
+            `INSERT INTO activities (name, session_time, cost, description, max_participants, available) VALUES (?, ?, ?, ?, ?, ?)`,
+            [name, session_time, cost || 0, description || '', max_participants || 0, available !== undefined ? available : 1]
+        );
+        res.json({ success: true, id: result.lastID });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Toggle activity availability (admin)
-app.put('/api/activities/:id/availability', requireAdmin, (req, res) => {
-    const { id } = req.params;
-    const { available } = req.body;
-
-    db.run(
-        'UPDATE activities SET available = ? WHERE id = ?',
-        [available ? 1 : 0, id],
-        function (err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ success: true });
-        }
-    );
+app.put('/api/activities/:id/availability', requireAdmin, async (req, res) => {
+    try {
+        await dbRun('UPDATE activities SET available = ? WHERE id = ?', [req.body.available ? 1 : 0, req.params.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Update activity details (admin)
-app.put('/api/activities/:id', requireAdmin, (req, res) => {
-    const { id } = req.params;
+app.put('/api/activities/:id', requireAdmin, async (req, res) => {
     const { name, session_time, cost, description, max_participants } = req.body;
-
-    db.run(
-        'UPDATE activities SET name = ?, session_time = ?, cost = ?, description = ?, max_participants = ? WHERE id = ?',
-        [name, session_time, cost || 0, description || '', max_participants || 0, id],
-        function (err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ success: true });
-        }
-    );
+    try {
+        await dbRun(
+            'UPDATE activities SET name = ?, session_time = ?, cost = ?, description = ?, max_participants = ? WHERE id = ?',
+            [name, session_time, cost || 0, description || '', max_participants || 0, req.params.id]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Delete activity (admin)
-app.delete('/api/activities/:id', requireAdmin, (req, res) => {
-    const { id } = req.params;
-
-    db.run('DELETE FROM activities WHERE id = ?', [id], function (err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ success: true, deleted: this.changes });
-    });
+app.delete('/api/activities/:id', requireAdmin, async (req, res) => {
+    try {
+        const result = await dbRun('DELETE FROM activities WHERE id = ?', [req.params.id]);
+        res.json({ success: true, deleted: result.changes });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Get all activity signups (admin)
-app.get('/api/activity-signups', (req, res) => {
-    const query = `
-    SELECT 
-      acs.*,
-      a.name as activity_name,
-      a.session_time,
-      a.cost,
-      f.booking_ref,
-      f.access_key
-    FROM activity_signups acs
-    JOIN activities a ON acs.activity_id = a.id
-    JOIN families f ON acs.family_id = f.id
-    ORDER BY a.session_time, acs.created_at
-  `;
-
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+// Activity Signups
+app.get('/api/activity-signups', async (req, res) => {
+    try {
+        const rows = await dbAll(`
+            SELECT 
+              acs.*,
+              a.name as activity_name,
+              a.session_time,
+              a.cost,
+              f.booking_ref,
+              f.access_key
+            FROM activity_signups acs
+            JOIN activities a ON acs.activity_id = a.id
+            JOIN families f ON acs.family_id = f.id
+            ORDER BY a.session_time, acs.created_at
+        `);
 
         const signups = rows.map(row => ({
             ...row,
             children: JSON.parse(row.children)
         }));
-
         res.json(signups);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Get activity signups for a family
-app.get('/api/activity-signups/family/:accessKey', (req, res) => {
-    const { accessKey } = req.params;
-
-    const query = `
-    SELECT 
-      acs.*,
-      a.name as activity_name,
-      a.session_time,
-      a.cost
-    FROM activity_signups acs
-    JOIN activities a ON acs.activity_id = a.id
-    JOIN families f ON acs.family_id = f.id
-    WHERE f.access_key = ?
-    ORDER BY a.session_time
-  `;
-
-    db.all(query, [accessKey], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+app.get('/api/activity-signups/family/:accessKey', async (req, res) => {
+    try {
+        const rows = await dbAll(`
+            SELECT 
+              acs.*,
+              a.name as activity_name,
+              a.session_time,
+              a.cost
+            FROM activity_signups acs
+            JOIN activities a ON acs.activity_id = a.id
+            JOIN families f ON acs.family_id = f.id
+            WHERE f.access_key = ?
+            ORDER BY a.session_time
+        `, [req.params.accessKey]);
 
         const signups = rows.map(row => ({
             ...row,
             children: JSON.parse(row.children)
         }));
-
         res.json(signups);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Sign up for activity
-app.post('/api/activity-signups', (req, res) => {
+app.post('/api/activity-signups', async (req, res) => {
     const { activity_id, access_key, children } = req.body;
+    try {
+        const family = await dbGet('SELECT id FROM families WHERE access_key = ?', [access_key]);
+        if (!family) return res.status(404).json({ error: 'Family not found' });
 
-    // Get family ID from access key
-    db.get('SELECT id FROM families WHERE access_key = ?', [access_key], (err, family) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        if (!family) {
-            return res.status(404).json({ error: 'Family not found' });
-        }
+        const existing = await dbGet('SELECT id FROM activity_signups WHERE activity_id = ? AND family_id = ?', [activity_id, family.id]);
 
-        // Check if already signed up
-        db.get(
-            'SELECT id FROM activity_signups WHERE activity_id = ? AND family_id = ?',
-            [activity_id, family.id],
-            (err, existing) => {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-
-                if (existing) {
-                    // If no children selected, delete the signup
-                    if (!children || children.length === 0) {
-                        db.run(
-                            'DELETE FROM activity_signups WHERE id = ?',
-                            [existing.id],
-                            function (err) {
-                                if (err) {
-                                    return res.status(500).json({ error: err.message });
-                                }
-                                // Check capacity and auto-disable if full
-                                checkAndUpdateActivityCapacity(activity_id);
-                                res.json({ success: true, deleted: true });
-                            }
-                        );
-                    } else {
-                        // Update existing signup
-                        db.run(
-                            'UPDATE activity_signups SET children = ? WHERE id = ?',
-                            [JSON.stringify(children), existing.id],
-                            function (err) {
-                                if (err) {
-                                    return res.status(500).json({ error: err.message });
-                                }
-                                // Check capacity and auto-disable if full
-                                checkAndUpdateActivityCapacity(activity_id);
-                                res.json({ success: true, id: existing.id });
-                            }
-                        );
-                    }
-                } else {
-                    // Only create new signup if children are selected
-                    if (!children || children.length === 0) {
-                        // No children selected and no existing signup - nothing to do
-                        return res.json({ success: true, skipped: true });
-                    }
-                    
-                    // Create new signup
-                    db.run(
-                        `INSERT INTO activity_signups (activity_id, family_id, children) VALUES (?, ?, ?)`,
-                        [activity_id, family.id, JSON.stringify(children)],
-                        function (err) {
-                            if (err) {
-                                return res.status(500).json({ error: err.message });
-                            }
-                            // Check capacity and auto-disable if full
-                            checkAndUpdateActivityCapacity(activity_id);
-                            res.json({ success: true, id: this.lastID });
-                        }
-                    );
-                }
+        if (existing) {
+            if (!children || children.length === 0) {
+                // Delete
+                await dbRun('DELETE FROM activity_signups WHERE id = ?', [existing.id]);
+                await checkAndUpdateActivityCapacity(activity_id);
+                res.json({ success: true, deleted: true });
+            } else {
+                // Update
+                await dbRun('UPDATE activity_signups SET children = ? WHERE id = ?', [JSON.stringify(children), existing.id]);
+                await checkAndUpdateActivityCapacity(activity_id);
+                res.json({ success: true, id: existing.id });
             }
-        );
-    });
+        } else {
+            if (!children || children.length === 0) return res.json({ success: true, skipped: true });
+
+            // Create
+            const result = await dbRun(
+                `INSERT INTO activity_signups (activity_id, family_id, children) VALUES (?, ?, ?)`,
+                [activity_id, family.id, JSON.stringify(children)]
+            );
+            await checkAndUpdateActivityCapacity(activity_id);
+            res.json({ success: true, id: result.lastID });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Update payment status
-// ==================== PAYMENTS ====================
+// Payments
+app.get('/api/payments/family/:accessKey', async (req, res) => {
+    try {
+        const family = await dbGet('SELECT id FROM families WHERE access_key = ?', [req.params.accessKey]);
+        if (!family) return res.status(404).json({ error: 'Family not found' });
 
-// Get all payments for a family
-app.get('/api/payments/family/:accessKey', (req, res) => {
-    const { accessKey } = req.params;
-    
-    // First get the family_id
-    db.get('SELECT id FROM families WHERE access_key = ?', [accessKey], (err, family) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        if (!family) {
-            return res.status(404).json({ error: 'Family not found' });
-        }
-        
-        // Get all payments for this family
-        db.all(
-            'SELECT * FROM payments WHERE family_id = ? ORDER BY payment_date DESC',
-            [family.id],
-            (err, payments) => {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                res.json(payments);
-            }
-        );
-    });
-});
-
-// Get all payments (admin)
-app.get('/api/payments', requireAdmin, (req, res) => {
-    const query = `
-        SELECT 
-            p.*,
-            f.booking_ref
-        FROM payments p
-        JOIN families f ON p.family_id = f.id
-        ORDER BY p.payment_date DESC
-    `;
-    
-    db.all(query, [], (err, payments) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+        const payments = await dbAll('SELECT * FROM payments WHERE family_id = ? ORDER BY payment_date DESC', [family.id]);
         res.json(payments);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Create a payment
-app.post('/api/payments', (req, res) => {
+app.get('/api/payments', requireAdmin, async (req, res) => {
+    try {
+        const payments = await dbAll(`
+            SELECT p.*, f.booking_ref
+            FROM payments p
+            JOIN families f ON p.family_id = f.id
+            ORDER BY p.payment_date DESC
+        `);
+        res.json(payments);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/payments', async (req, res) => {
     const { access_key, amount, notes } = req.body;
-    
     if (!access_key || amount === undefined) {
         return res.status(400).json({ error: 'access_key and amount required' });
     }
-    
-    // Get family ID from access key
-    db.get('SELECT id FROM families WHERE access_key = ?', [access_key], (err, family) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        if (!family) {
-            return res.status(404).json({ error: 'Family not found' });
-        }
-        
-        db.run(
+
+    try {
+        const family = await dbGet('SELECT id FROM families WHERE access_key = ?', [access_key]);
+        if (!family) return res.status(404).json({ error: 'Family not found' });
+
+        const result = await dbRun(
             'INSERT INTO payments (family_id, amount, notes) VALUES (?, ?, ?)',
-            [family.id, amount, notes || null],
-            function (err) {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                res.json({ success: true, id: this.lastID });
-            }
+            [family.id, amount, notes || null]
         );
-    });
+        res.json({ success: true, id: result.lastID });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Delete a payment (admin)
-// Void a payment (admin) - marks as cancelled instead of deleting
-app.post('/api/payments/:id/void', requireAdmin, (req, res) => {
-    const { id } = req.params;
-    
-    db.run('UPDATE payments SET cancelled = 1 WHERE id = ?', [id], function (err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+// Admin payment overrides
+app.post('/api/payments/:id/void', requireAdmin, async (req, res) => {
+    try {
+        await dbRun('UPDATE payments SET cancelled = 1 WHERE id = ?', [req.params.id]);
         res.json({ success: true });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Reinstate a voided payment (admin)
-app.post('/api/payments/:id/reinstate', requireAdmin, (req, res) => {
-    const { id } = req.params;
-    
-    db.run('UPDATE payments SET cancelled = 0 WHERE id = ?', [id], function (err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+app.post('/api/payments/:id/reinstate', requireAdmin, async (req, res) => {
+    try {
+        await dbRun('UPDATE payments SET cancelled = 0 WHERE id = ?', [req.params.id]);
         res.json({ success: true });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-app.delete('/api/payments/:id', requireAdmin, (req, res) => {
-    const { id } = req.params;
-    
-    db.run('DELETE FROM payments WHERE id = ?', [id], function (err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+app.delete('/api/payments/:id', requireAdmin, async (req, res) => {
+    try {
+        await dbRun('DELETE FROM payments WHERE id = ?', [req.params.id]);
         res.json({ success: true });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Update a payment (admin)
-app.put('/api/payments/:id', requireAdmin, (req, res) => {
-    const { id } = req.params;
+app.put('/api/payments/:id', requireAdmin, async (req, res) => {
     const { payment_date, amount, notes } = req.body;
-    
-    db.run(
-        'UPDATE payments SET payment_date = ?, amount = ?, notes = ? WHERE id = ?',
-        [payment_date, amount, notes || null, id],
-        function (err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ success: true });
-        }
-    );
+    try {
+        await dbRun(
+            'UPDATE payments SET payment_date = ?, amount = ?, notes = ? WHERE id = ?',
+            [payment_date, amount, notes || null, req.params.id]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Export families to CSV format
-app.get('/api/export/families', (req, res) => {
-    const query = `
-    SELECT 
-      f.booking_ref,
-      f.camping_type,
-      f.nights,
-      fm.name,
-      CASE WHEN fm.is_child = 1 THEN 'Child' ELSE 'Adult' END as person_type,
-      CASE WHEN fm.in_sefton_park = 1 THEN 'Yes' ELSE 'No' END as in_sefton_park,
-      fm.year,
-      fm.class
-    FROM families f
-    LEFT JOIN family_members fm ON f.id = fm.family_id
-    ORDER BY f.booking_ref, fm.is_child DESC, fm.name
-  `;
-
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+// Export
+app.get('/api/export/families', async (req, res) => {
+    try {
+        const rows = await dbAll(`
+            SELECT 
+              f.booking_ref,
+              f.camping_type,
+              f.nights,
+              fm.name,
+              CASE WHEN fm.is_child = 1 THEN 'Child' ELSE 'Adult' END as person_type,
+              CASE WHEN fm.in_sefton_park = 1 THEN 'Yes' ELSE 'No' END as in_sefton_park,
+              fm.year,
+              fm.class
+            FROM families f
+            LEFT JOIN family_members fm ON f.id = fm.family_id
+            ORDER BY f.booking_ref, fm.is_child DESC, fm.name
+        `);
 
         const csvRows = rows.map(row => ({
             ...row,
             nights: JSON.parse(row.nights).join(', ')
         }));
-
         res.json(csvRows);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// Export activity signups to CSV format
-app.get('/api/export/activities', (req, res) => {
-    const query = `
-    SELECT 
-      a.name as activity_name,
-      a.session_time,
-      a.cost,
-      f.booking_ref,
-      acs.children,
-      CASE WHEN acs.paid = 1 THEN 'Yes' ELSE 'No' END as paid,
-      acs.amount_paid
-    FROM activity_signups acs
-    JOIN activities a ON acs.activity_id = a.id
-    JOIN families f ON acs.family_id = f.id
-    ORDER BY a.session_time, f.booking_ref
-  `;
-
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-
-        const csvRows = rows.map(row => ({
-            ...row,
-            children: JSON.parse(row.children).join(', ')
-        }));
-
-        res.json(csvRows);
-    });
-});
-
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

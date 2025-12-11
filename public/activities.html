@@ -56,13 +56,15 @@
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
         <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
             <h2 style="color: var(--forest-green); margin-bottom: 20px;">💳 Confirm Payment</h2>
-            
-            <div id="payment-details" style="background: var(--light-cream); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+
+            <div id="payment-details"
+                style="background: var(--light-cream); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
                 <!-- Payment details will be inserted here -->
             </div>
 
             <p style="color: var(--earth-brown); margin-bottom: 20px; font-size: 0.9em;">
-                <strong>Note:</strong> This is a test payment flow. In production, you will be redirected to a secure payment provider.
+                <strong>Note:</strong> This is a test payment flow. In production, you will be redirected to a secure
+                payment provider.
             </p>
 
             <div style="display: flex; gap: 10px;">
@@ -100,9 +102,9 @@
         async function loadFamilyData() {
             try {
                 familyData = await fetchJSON(`${API_URL}/families/access/${accessKey}`);
-                    document.getElementById('activities-container').classList.remove('hidden');
-                    document.getElementById('my-signups').classList.remove('hidden');
-                
+                document.getElementById('activities-container').classList.remove('hidden');
+                document.getElementById('my-signups').classList.remove('hidden');
+
             } catch (error) {
                 console.error('Error loading family data:', error);
                 showAlert('Error loading family data', 'error');
@@ -127,8 +129,20 @@
                 // Now render activities with pre-selected checkboxes
                 renderActivities();
                 renderMySignups();
+                // Also update family data financials as they might have changed after activity updates
+                // Note: ideally we do this in one call or return new financials from activity signup endpoint
+                await updateFinancials();
             } catch (error) {
                 console.error('Error loading signups:', error);
+            }
+        }
+
+        async function updateFinancials() {
+            try {
+                familyData = await fetchJSON(`${API_URL}/families/access/${accessKey}`);
+                renderPaymentSection();
+            } catch (err) {
+                console.error(err);
             }
         }
 
@@ -208,10 +222,9 @@
                 }
 
                 // Refresh data and re-render totals and signups
+                // We reload everything to ensure consistency
                 await loadMySignups();
-                await loadFamilyData();
-                renderActivities();
-                renderMySignups();
+                // loadMySignups calls updateFinancials -> renderPaymentSection
             } catch (error) {
                 console.error('Error saving activity selection:', error);
                 showAlert('Error saving activity selection', 'error');
@@ -230,9 +243,9 @@
 
             // Display current signups
             const signupsList = mySignups.filter(s => s.children.length > 0).map(signup => {
-              const activityTotal = signup.cost * signup.children.length;
-              
-              return `
+                const activityTotal = signup.cost * signup.children.length;
+
+                return `
             <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid white;">
               <strong style="color: var(--forest-green);">${signup.activity_name}</strong>
               <br>
@@ -254,7 +267,7 @@
         <div id="payment-status-section"></div>
 
       `;
-            
+
             renderPaymentSection();
         }
 
@@ -265,9 +278,10 @@
             // Use family-level payment data from the API
             const totalDue = familyData.total_owed || 0;
             const totalPaid = familyData.total_paid || 0;
+            // Calculations should ideally come from backend to match rounding
             const unpaid = familyData.outstanding || 0;
 
-            // Show payment section if there's anything due OR if they've paid anything (even if now cancelled)
+            // Show payment section if there's anything due OR if they've paid anything
             if (totalDue > 0 || totalPaid > 0) {
                 paymentSection.innerHTML = `
           <div style="background: var(--light-cream); padding: 25px; border-radius: 15px; margin-top: 30px; border: 3px solid var(--forest-green);">
@@ -285,21 +299,21 @@
               </div>
               
               <div style="padding: 15px; background: white; border-radius: 10px;">
-                <strong style="color: ${unpaid > 0 ? 'var(--sunset-orange)' : unpaid < 0 ? '#FF6B6B' : 'var(--bright-green)'};">Outstanding:</strong>
-                <span style="float: right; font-size: 1.2em; font-weight: bold; color: ${unpaid > 0 ? 'var(--sunset-orange)' : unpaid < 0 ? '#FF6B6B' : 'var(--bright-green)'};">£${unpaid.toFixed(2)}</span>
+                <strong style="color: ${unpaid > 0.01 ? 'var(--sunset-orange)' : unpaid < -0.01 ? '#FF6B6B' : 'var(--bright-green)'};">Outstanding:</strong>
+                <span style="float: right; font-size: 1.2em; font-weight: bold; color: ${unpaid > 0.01 ? 'var(--sunset-orange)' : unpaid < -0.01 ? '#FF6B6B' : 'var(--bright-green)'};">£${unpaid.toFixed(2)}</span>
               </div>
             </div>
 
-            ${unpaid > 0 ? `
+            ${unpaid > 0.01 ? `
               <button class="btn btn-primary btn-block" onclick="openPaymentModal()">
                 💳 Pay Now (£${unpaid.toFixed(2)})
               </button>
-            ` : unpaid < 0 ? `
+            ` : unpaid < -0.01 ? `
               <button class="btn btn-block" style="background: #ccc; color: #666; cursor: not-allowed;" disabled>
                 ⚠️ Unable to Cancel Automatically
               </button>
               <p style="text-align: center; margin-top: 15px; margin-bottom: 0; color: var(--earth-brown); font-size: 0.95em;">
-                You have overpaid by <strong style="color: #FF6B6B;">£${Math.abs(unpaid).toFixed(2)}</strong>. This may be due to cancelled activities. Please contact an admin on the school camping WhatsApp chat to process your refund.
+                You have overpaid by <strong style="color: #FF6B6B;">£${Math.abs(unpaid).toFixed(2)}</strong>. Please contact an admin to process your refund.
               </p>
             ` : `
               <div style="text-align: center; padding: 20px; background: var(--bright-green); color: white; border-radius: 10px; font-weight: bold;">
@@ -308,7 +322,7 @@
             `}
 
             <p style="text-align: center; margin-top: 20px; margin-bottom: 0; color: var(--earth-brown); font-size: 0.9em;">
-              If you think you've overpaid or have payment questions, please ask on the school camping WhatsApp chat.
+              Questions? Ask on the school camping WhatsApp chat.
             </p>
           </div>
         `;
@@ -319,68 +333,71 @@
 
         function openPaymentModal() {
             if (!familyData) return;
-            
-            const unpaidSignups = mySignups.filter(s => {
-                const total = s.cost * s.children.length;
-                const paid = s.paid ? s.amount_paid : 0;
-                return total > paid;
-            });
-            
-            const totalDue = mySignups.reduce((sum, signup) => sum + (signup.cost * signup.children.length), 0);
-            const totalPaid = mySignups.filter(s => s.paid).reduce((sum, signup) => sum + signup.amount_paid, 0);
-            const unpaid = totalDue - totalPaid;
-            
+
+            const totalDue = familyData.total_owed || 0;
+            const totalPaid = familyData.total_paid || 0;
+            const unpaid = familyData.outstanding || 0;
+
+            if (unpaid <= 0) {
+                showAlert('No outstanding balance to pay.', 'info');
+                return;
+            }
+
+            // Generate list of all signups for context
+            const allSignupsHtml = mySignups
+                .filter(s => s.children && s.children.length > 0 && s.cost > 0)
+                .map(s => `
+                    <div style="margin-bottom: 5px; font-size: 0.9em;">
+                        <strong>${s.activity_name}</strong> - £${(s.cost * s.children.length).toFixed(2)}
+                    </div>
+                `).join('');
+
             const detailsHtml = `
                 <p style="margin-bottom: 15px;">
-                    <strong>Booking Reference ${familyData.booking_ref}</strong> is attempting to pay <strong style="color: var(--forest-green);">£${unpaid.toFixed(2)}</strong> for the following items:
+                    <strong>Booking Reference ${familyData.booking_ref}</strong>
                 </p>
-                <div style="background: white; padding: 15px; border-radius: 10px;">
-                    ${unpaidSignups.map(signup => {
-                        const total = signup.cost * signup.children.length;
-                        const paid = signup.paid ? signup.amount_paid : 0;
-                        const owing = total - paid;
-                        return `
-                            <div style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
-                                <strong>${signup.activity_name}</strong><br>
-                                <small>Children: ${signup.children.join(', ')}</small><br>
-                                <span>Amount: £${owing.toFixed(2)}</span>
-                            </div>
-                        `;
-                    }).join('')}
-                    <div style="margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--forest-green);">
-                        <strong>Total Payment: £${unpaid.toFixed(2)}</strong>
-                    </div>
+                
+                <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                   <h4 style="margin-top:0; color: var(--forest-green);">Activity Summary</h4>
+                   ${allSignupsHtml || '<p>No paid activities selected.</p>'}
+                   
+                   <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ddd;">
+                   
+                   <div style="display:flex; justify-content:space-between;">
+                       <span>Total Cost:</span>
+                       <strong>£${totalDue.toFixed(2)}</strong>
+                   </div>
+                   <div style="display:flex; justify-content:space-between; color: var(--bright-green);">
+                       <span>Already Paid:</span>
+                       <strong>-£${totalPaid.toFixed(2)}</strong>
+                   </div>
+                   <div style="display:flex; justify-content:space-between; margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--forest-green); font-size: 1.2em;">
+                       <span>To Pay Now:</span>
+                       <strong style="color: var(--sunset-orange);">£${unpaid.toFixed(2)}</strong>
+                   </div>
                 </div>
             `;
-            
+
             document.getElementById('payment-details').innerHTML = detailsHtml;
             document.getElementById('payment-modal').style.display = 'flex';
         }
-        
+
         function closePaymentModal() {
             document.getElementById('payment-modal').style.display = 'none';
         }
-        
+
         async function confirmPayment() {
-            // Calculate total amount to pay
-            const unpaidSignups = mySignups.filter(s => {
-                const total = s.cost * s.children.length;
-                const paid = s.paid ? s.amount_paid : 0;
-                return total > paid;
-            });
-            
-            const totalAmount = unpaidSignups.reduce((sum, signup) => {
-                const total = signup.cost * signup.children.length;
-                const alreadyPaid = signup.paid ? signup.amount_paid : 0;
-                return sum + (total - alreadyPaid);
-            }, 0);
-            
-            if (totalAmount <= 0) {
+            if (!familyData) return;
+
+            // Recalculate based on current state to be safe (client-side check only)
+            const unpaid = familyData.outstanding || 0;
+
+            if (unpaid <= 0) {
                 closePaymentModal();
                 showAlert('Nothing to pay!', 'info');
                 return;
             }
-            
+
             try {
                 const response = await fetch(`${API_URL}/payments`, {
                     method: 'POST',
@@ -389,18 +406,18 @@
                     },
                     body: JSON.stringify({
                         access_key: accessKey,
-                        amount: totalAmount,
-                        notes: 'Test payment for camping activities'
+                        amount: unpaid,
+                        notes: 'Payment for outstanding balance'
                     })
                 });
-                
+
                 closePaymentModal();
-                
+
                 if (response.ok) {
-                    showAlert(`Payment successful! ✓ £${totalAmount.toFixed(2)} has been recorded.`, 'success');
+                    showAlert(`Payment successful! ✓ £${unpaid.toFixed(2)} has been recorded.`, 'success');
+                    // Refresh data
                     await loadMySignups();
-                    await loadFamilyData(); // Refresh family data to show updated balance
-                    renderMySignups(); // Re-render to show updated payment status
+                    await updateFinancials();
                 } else {
                     const errorData = await response.json();
                     showAlert(`Error processing payment: ${errorData.error || 'Unknown error'}`, 'error');
@@ -412,68 +429,12 @@
             }
         }
 
-        // Removed: superseded by real-time saves and applyChanges
-        /* async function saveAllActivities() {
-            const activitiesToSave = [];
-            
-            // Collect all activities with their selected children
-            activities.forEach(activity => {
-                const checkboxes = document.querySelectorAll(`input[data-activity-id="${activity.id}"]:checked`);
-                const selectedChildren = Array.from(checkboxes).map(cb => cb.dataset.childName);
-                
-                activitiesToSave.push({
-                    activity_id: activity.id,
-                    children: selectedChildren
-                });
-            });
-
-            // Save all activities
-            let allSuccess = true;
-            for (const activityData of activitiesToSave) {
-                try {
-                    const response = await fetch(`${API_URL}/activity-signups`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            activity_id: activityData.activity_id,
-                            access_key: accessKey,
-                            children: activityData.children
-                        })
-                    });
-
-                    if (!response.ok) {
-                        allSuccess = false;
-                        break;
-                    }
-                } catch (error) {
-                    console.error('Error saving activity:', error);
-                    allSuccess = false;
-                    break;
-                }
-            }
-
-            if (allSuccess) {
-                showAlert('All activities updated successfully! 🎉', 'success');
-                await loadMySignups();
-                renderActivities();
-                // Wait for DOM to update before calculating totals
-                setTimeout(() => {
-                    renderMySignups();
-                }, 0);
-            } else {
-                showAlert('Error updating some activities. Please try again.', 'error');
-            }
-        } */
-
         async function applyChanges() {
-            // Bulk re-save by delegating to per-activity saver for each activity id
-            const ids = activities.map(a => a.id);
-            for (const id of ids) {
-                await saveActivitySelection(id);
-            }
-            showAlert('All activities updated successfully! 🎉', 'success');
+            // Bulk re-save isn't strictly necessary with real-time updates but good for peace of mind
+            // We just re-fetch to ensure everything is synced
+            await loadMySignups();
+            await updateFinancials();
+            showAlert('All activities synced and up to date! 🎉', 'success');
         }
 
         function exitToHome() {
