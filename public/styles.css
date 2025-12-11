@@ -450,3 +450,35 @@ nav {
 .gap-10 {
   gap: 10px;
 }
+
+  /* Tabs */
+  .tab-button {
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--earth-brown);
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+  }
+
+  .tab-button:hover {
+    color: var(--forest-green);
+    background: var(--light-cream);
+  }
+
+  .tab-button.active {
+    color: var(--forest-green);
+    border-bottom-color: var(--forest-green);
+    font-weight: bold;
+  }
+
+  .tab-content {
+    animation: fadeIn 0.3s ease-in;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }

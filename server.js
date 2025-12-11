@@ -151,7 +151,55 @@ app.get('/api/families', (req, res) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
-        res.json(rows.map(transformFamilyRow));
+        
+            // Get payment totals for each family
+            const familiesWithPayments = rows.map(transformFamilyRow);
+            let completed = 0;
+        
+            familiesWithPayments.forEach((family, index) => {
+                // Get total owed for this family
+                const owedQuery = `
+                    SELECT COALESCE(SUM(a.cost * json_array_length(acs.children)), 0) as total_owed
+                    FROM activity_signups acs
+                    JOIN activities a ON acs.activity_id = a.id
+                    WHERE acs.family_id = ?
+                `;
+            
+                db.get(owedQuery, [family.id], (owedErr, owedResult) => {
+                    if (!owedErr) {
+                        family.total_owed = owedResult.total_owed || 0;
+                    
+                        // Get total paid for this family
+                        const paidQuery = `
+                            SELECT COALESCE(SUM(amount), 0) as total_paid
+                            FROM payments
+                            WHERE family_id = ?
+                        `;
+                    
+                        db.get(paidQuery, [family.id], (paidErr, paidResult) => {
+                            if (!paidErr) {
+                                family.total_paid = paidResult.total_paid || 0;
+                                family.outstanding = family.total_owed - family.total_paid;
+                            }
+                        
+                            completed++;
+                            if (completed === familiesWithPayments.length) {
+                                res.json(familiesWithPayments);
+                            }
+                        });
+                    } else {
+                        completed++;
+                        if (completed === familiesWithPayments.length) {
+                            res.json(familiesWithPayments);
+                        }
+                    }
+                });
+            });
+        
+            // Handle empty array case
+            if (familiesWithPayments.length === 0) {
+                res.json([]);
+            }
     });
 });
 
@@ -510,13 +558,104 @@ app.post('/api/activity-signups', (req, res) => {
 });
 
 // Update payment status
-app.put('/api/activity-signups/:id/payment', (req, res) => {
-    const { id } = req.params;
-    const { paid, amount_paid } = req.body;
+// ==================== PAYMENTS ====================
 
+// Get all payments for a family
+app.get('/api/payments/family/:accessKey', (req, res) => {
+    const { accessKey } = req.params;
+    
+    // First get the family_id
+    db.get('SELECT id FROM families WHERE access_key = ?', [accessKey], (err, family) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (!family) {
+            return res.status(404).json({ error: 'Family not found' });
+        }
+        
+        // Get all payments for this family
+        db.all(
+            'SELECT * FROM payments WHERE family_id = ? ORDER BY payment_date DESC',
+            [family.id],
+            (err, payments) => {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json(payments);
+            }
+        );
+    });
+});
+
+// Get all payments (admin)
+app.get('/api/payments', requireAdmin, (req, res) => {
+    const query = `
+        SELECT 
+            p.*,
+            f.booking_ref
+        FROM payments p
+        JOIN families f ON p.family_id = f.id
+        ORDER BY p.payment_date DESC
+    `;
+    
+    db.all(query, [], (err, payments) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(payments);
+    });
+});
+
+// Create a payment
+app.post('/api/payments', (req, res) => {
+    const { access_key, amount, notes } = req.body;
+    
+    if (!access_key || amount === undefined) {
+        return res.status(400).json({ error: 'access_key and amount required' });
+    }
+    
+    // Get family ID from access key
+    db.get('SELECT id FROM families WHERE access_key = ?', [access_key], (err, family) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (!family) {
+            return res.status(404).json({ error: 'Family not found' });
+        }
+        
+        db.run(
+            'INSERT INTO payments (family_id, amount, notes) VALUES (?, ?, ?)',
+            [family.id, amount, notes || null],
+            function (err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ success: true, id: this.lastID });
+            }
+        );
+    });
+});
+
+// Delete a payment (admin)
+app.delete('/api/payments/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    
+    db.run('DELETE FROM payments WHERE id = ?', [id], function (err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Update a payment (admin)
+app.put('/api/payments/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    const { amount, notes } = req.body;
+    
     db.run(
-        'UPDATE activity_signups SET paid = ?, amount_paid = ? WHERE id = ?',
-        [paid ? 1 : 0, amount_paid || 0, id],
+        'UPDATE payments SET amount = ?, notes = ? WHERE id = ?',
+        [amount, notes || null, id],
         function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });

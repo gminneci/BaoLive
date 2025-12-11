@@ -20,7 +20,26 @@
             <a href="index.html" class="btn btn-info btn-small">← Back to Home</a>
         </nav>
 
-        <!-- Family Registrations -->
+            <!-- Tabs -->
+            <div class="card">
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--light-cream);">
+                    <button class="tab-button active" onclick="switchTab('families')" id="tab-families">
+                        👨‍👩‍👧‍👦 Families
+                    </button>
+                    <button class="tab-button" onclick="switchTab('activities')" id="tab-activities">
+                        🎯 Activities
+                    </button>
+                    <button class="tab-button" onclick="switchTab('signups')" id="tab-signups">
+                        📝 Sign-ups
+                    </button>
+                    <button class="tab-button" onclick="switchTab('payments')" id="tab-payments">
+                        💰 Payments
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: Family Registrations -->
+            <div class="tab-content" id="content-families">
         <div class="card">
             <div class="flex-between mb-20">
                 <h2 style="color: var(--forest-green);">Family Registrations</h2>
@@ -33,8 +52,10 @@
                 <div class="spinner"></div>
             </div>
         </div>
+            </div>
 
-        <!-- Manage Activities -->
+            <!-- Tab: Manage Activities -->
+            <div class="tab-content" id="content-activities" style="display: none;">
         <div class="card">
             <div class="flex-between mb-20">
                 <h2 style="color: var(--leaf-green); margin: 0;">Manage Activities</h2>
@@ -50,8 +71,10 @@
                 <div class="spinner"></div>
             </div>
         </div>
+            </div>
 
-        <!-- Activity Sign-ups -->
+            <!-- Tab: Activity Sign-ups -->
+            <div class="tab-content" id="content-signups" style="display: none;">
         <div class="card">
             <div class="flex-between mb-20">
                 <h2 style="color: var(--sunset-orange);">Activity Sign-ups</h2>
@@ -65,6 +88,21 @@
             </div>
         </div>
     </div>
+
+            <!-- Tab: Payments -->
+            <div class="tab-content" id="content-payments" style="display: none;">
+                <div class="card">
+                    <div class="flex-between mb-20">
+                        <h2 style="color: var(--forest-green);">Payment Transactions</h2>
+                    </div>
+                    <p style="color: var(--earth-brown); margin-bottom: 20px;">
+                        All payments are tracked at family level. Edit or delete transactions as needed.
+                    </p>
+                    <div id="payments-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
 
     <!-- Add Activity Modal -->
     <div id="add-modal"
@@ -229,6 +267,7 @@
         let families = [];
         let activitySignups = [];
         let allActivities = [];
+        let payments = [];
         
         // Sorting state
         let sortState = {
@@ -237,10 +276,22 @@
             signups: { column: null, ascending: true }
         };
 
+        // Tab switching
+        function switchTab(tab) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(`content-${tab}`).style.display = 'block';
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
+
         window.addEventListener('DOMContentLoaded', async () => {
             await loadFamilies();
             await loadActivitySignups();
             await loadAllActivities();
+            await loadPayments();
         });
 
         async function loadFamilies() {
@@ -282,6 +333,113 @@
                 console.error('Error loading activities:', error);
                 document.getElementById('manage-activities-container').innerHTML =
                     '<p class="alert alert-error">Error loading activities: ' + error.message + '</p>';
+            }
+        }
+
+        async function loadPayments() {
+            try {
+                const response = await fetch(`${API_URL}/payments`);
+                if (response.ok) {
+                    payments = await response.json();
+                    renderPayments();
+                } else {
+                    document.getElementById('payments-container').innerHTML =
+                        '<p class="alert alert-error">Error loading payments</p>';
+                }
+            } catch (error) {
+                console.error('Error loading payments:', error);
+                document.getElementById('payments-container').innerHTML =
+                    '<p class="alert alert-error">Error loading payments</p>';
+            }
+        }
+
+        function renderPayments() {
+            const container = document.getElementById('payments-container');
+            
+            if (payments.length === 0) {
+                container.innerHTML = '<p>No payment transactions yet.</p>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Booking Ref</th>
+                                <th>Amount</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${payments.map(payment => `
+                                <tr>
+                                    <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
+                                    <td><strong>${payment.booking_ref}</strong></td>
+                                    <td>£${payment.amount.toFixed(2)}</td>
+                                    <td>${payment.notes || '-'}</td>
+                                    <td>
+                                        <div style="display: flex; gap: 5px;">
+                                            <button class="btn btn-info btn-small" onclick="editPayment(${payment.id}, ${payment.amount}, '${(payment.notes || '').replace(/'/g, "\\'")}')">Edit</button>
+                                            <button class="btn btn-warning btn-small" onclick="deletePayment(${payment.id})">Delete</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <p style="margin-top: 20px; color: var(--earth-brown);">
+                    <strong>Total Payments:</strong> £${payments.reduce((sum, p) => sum + p.amount, 0).toFixed(2)}
+                </p>
+            `;
+        }
+
+        async function deletePayment(id) {
+            if (!confirm('Are you sure you want to delete this payment?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/payments/${id}`, { method: 'DELETE' });
+                if (response.ok) {
+                    showAlert('Payment deleted successfully', 'success');
+                    await loadPayments();
+                    await loadFamilies(); // Refresh family balances
+                } else {
+                    showAlert('Error deleting payment', 'error');
+                }
+            } catch (error) {
+                showAlert('Error deleting payment', 'error');
+            }
+        }
+
+        function editPayment(id, amount, notes) {
+            const newAmount = prompt('Enter new amount:', amount);
+            if (newAmount === null) return;
+            
+            const newNotes = prompt('Enter notes (optional):', notes === '-' ? '' : notes);
+            
+            updatePayment(id, parseFloat(newAmount), newNotes);
+        }
+
+        async function updatePayment(id, amount, notes) {
+            try {
+                const response = await fetch(`${API_URL}/payments/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount, notes })
+                });
+                
+                if (response.ok) {
+                    showAlert('Payment updated successfully', 'success');
+                    await loadPayments();
+                    await loadFamilies(); // Refresh family balances
+                } else {
+                    showAlert('Error updating payment', 'error');
+                }
+            } catch (error) {
+                showAlert('Error updating payment', 'error');
             }
         }
 
@@ -577,6 +735,10 @@
                             aVal = a.members.filter(m => m.is_child && m.in_sefton_park).length;
                             bVal = b.members.filter(m => m.is_child && m.in_sefton_park).length;
                             break;
+                        case 'payment':
+                            aVal = a.outstanding || 0;
+                            bVal = b.outstanding || 0;
+                            break;
                     }
                     
                     if (aVal < bVal) return sortState.families.ascending ? -1 : 1;
@@ -602,6 +764,7 @@
                 <th onclick="sortFamilies('camping')" style="cursor: pointer;">Camping Type${getSortIndicator('camping')}</th>
                 <th onclick="sortFamilies('nights')" style="cursor: pointer;">Nights${getSortIndicator('nights')}</th>
                 <th onclick="sortFamilies('students')" style="cursor: pointer;">Sefton Park Students${getSortIndicator('students')}</th>
+                <th onclick="sortFamilies('payment')" style="cursor: pointer;">Payment Status${getSortIndicator('payment')}</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -625,6 +788,36 @@
                                         const yearLabel = c.year === 'Reception' ? 'Reception' : `Year ${c.year || '?'}`;
                                         return `${c.name} (${yearLabel}, ${c.class || 'N/A'})`;
                                 }).join('<br>') || 'None'}
+                    </td>
+                    <td>
+                      ${(() => {
+                        const outstanding = family.outstanding || 0;
+                        const owed = family.total_owed || 0;
+                        const paid = family.total_paid || 0;
+                        let color, status;
+                        
+                        if (outstanding > 0) {
+                          color = 'var(--sunset-orange)';
+                          status = 'Not Paid';
+                        } else if (outstanding < 0) {
+                          color = '#4169E1';
+                          status = 'Overpaid';
+                        } else {
+                          color = 'var(--bright-green)';
+                          status = 'Paid ✓';
+                        }
+                        
+                        return `
+                          <div style="color: ${color}; font-weight: bold;">
+                            ${status}<br>
+                            <small style="color: var(--earth-brown); font-weight: normal;">
+                              Owed: £${owed.toFixed(2)}<br>
+                              Paid: £${paid.toFixed(2)}<br>
+                              ${outstanding !== 0 ? `Balance: £${outstanding.toFixed(2)}` : ''}
+                            </small>
+                          </div>
+                        `;
+                      })()}
                     </td>
                     <td>
                       <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
@@ -702,10 +895,6 @@
                             aVal = a.cost * a.children.length;
                             bVal = b.cost * b.children.length;
                             break;
-                        case 'payment':
-                            aVal = a.paid ? 1 : 0;
-                            bVal = b.paid ? 1 : 0;
-                            break;
                     }
                     
                     if (aVal < bVal) return sortState.signups.ascending ? -1 : 1;
@@ -721,6 +910,9 @@
                 return '';
             };
 
+            // Get family payment info for each signup
+            const familyMap = new Map(families.map(f => [f.booking_ref, f]));
+
             container.innerHTML = `
         <div style="overflow-x: auto;">
           <table>
@@ -731,13 +923,27 @@
                 <th onclick="sortSignups('booking')" style="cursor: pointer;">Booking Ref${getSortIndicator('booking')}</th>
                 <th onclick="sortSignups('children')" style="cursor: pointer;">Children${getSortIndicator('children')}</th>
                 <th onclick="sortSignups('cost')" style="cursor: pointer;">Cost${getSortIndicator('cost')}</th>
-                <th onclick="sortSignups('payment')" style="cursor: pointer;">Payment Status${getSortIndicator('payment')}</th>
-                <th>Actions</th>
+                <th>Family Payment Status</th>
               </tr>
             </thead>
             <tbody>
               ${sortedSignups.map(signup => {
                 const totalCost = signup.cost * signup.children.length;
+                const family = familyMap.get(signup.booking_ref);
+                const outstanding = family?.outstanding || 0;
+                
+                let statusColor, statusText;
+                if (outstanding > 0) {
+                  statusColor = 'var(--sunset-orange)';
+                  statusText = `Not Paid (£${outstanding.toFixed(2)} owed)`;
+                } else if (outstanding < 0) {
+                  statusColor = '#4169E1';
+                  statusText = `Overpaid (£${Math.abs(outstanding).toFixed(2)} credit)`;
+                } else {
+                  statusColor = 'var(--bright-green)';
+                  statusText = 'Paid ✓';
+                }
+                
                 return `
                   <tr>
                     <td><strong>${signup.activity_name}</strong></td>
@@ -745,27 +951,8 @@
                     <td>${signup.booking_ref}</td>
                     <td>${signup.children.join(', ')}</td>
                     <td>£${totalCost.toFixed(2)}</td>
-                    <td>
-                      <span class="paid-badge ${signup.paid ? 'yes' : 'no'}">
-                        ${signup.paid ? 'Paid ✓' : 'Not Paid'}
-                      </span>
-                    </td>
-                    <td>
-                      ${!signup.paid ? `
-                        <button 
-                          class="btn btn-primary btn-small" 
-                          onclick="markAsPaid(${signup.id}, ${totalCost})"
-                        >
-                          Mark Paid
-                        </button>
-                      ` : `
-                        <button 
-                          class="btn btn-warning btn-small" 
-                          onclick="markAsUnpaid(${signup.id})"
-                        >
-                          Mark Unpaid
-                        </button>
-                      `}
+                    <td style="color: ${statusColor}; font-weight: bold;">
+                      ${statusText}
                     </td>
                   </tr>
                 `;
@@ -775,55 +962,12 @@
         </div>
         <p style="margin-top: 20px; color: var(--earth-brown);">
           <strong>Total Sign-ups:</strong> ${activitySignups.length} | 
-          <strong>Total:</strong> £${activitySignups.reduce((sum, s) => sum + (s.cost * s.children.length), 0).toFixed(2)} | 
-          <strong>Paid:</strong> £${activitySignups.filter(s => s.paid).reduce((sum, s) => sum + s.amount_paid, 0).toFixed(2)}
+          <strong>Total Cost:</strong> £${activitySignups.reduce((sum, s) => sum + (s.cost * s.children.length), 0).toFixed(2)}
         </p>
       `;
         }
 
-        async function markAsPaid(signupId, amount) {
-            try {
-                const response = await fetch(`${API_URL}/activity-signups/${signupId}/payment`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        paid: true,
-                        amount_paid: amount
-                    })
-                });
 
-                if (response.ok) {
-                    await loadActivitySignups();
-                }
-            } catch (error) {
-                console.error('Error updating payment:', error);
-                alert('Error updating payment status');
-            }
-        }
-
-        async function markAsUnpaid(signupId) {
-            try {
-                const response = await fetch(`${API_URL}/activity-signups/${signupId}/payment`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        paid: false,
-                        amount_paid: 0
-                    })
-                });
-
-                if (response.ok) {
-                    await loadActivitySignups();
-                }
-            } catch (error) {
-                console.error('Error updating payment:', error);
-                alert('Error updating payment status');
-            }
-        }
 
         async function exportFamilies() {
             try {
