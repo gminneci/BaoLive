@@ -827,7 +827,7 @@
                 <th onclick="sortFamilies('nights')" style="cursor: pointer;">Nights${getSortIndicator('nights')}</th>
                 <th onclick="sortFamilies('students')" style="cursor: pointer;">Sefton Park Students${getSortIndicator('students')}</th>
                 <th onclick="sortFamilies('payment')" style="cursor: pointer;">Payment Status${getSortIndicator('payment')}</th>
-                <th>Actions</th>
+                <th>Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -838,7 +838,14 @@
 
                 return `
                   <tr>
-                    <td><strong>${family.booking_ref}</strong></td>
+                    <td>
+                      <a href="/access.html?booking_ref=${encodeURIComponent(family.booking_ref)}" 
+                         style="color: var(--forest-green); text-decoration: none; font-weight: bold; cursor: pointer;"
+                         onmouseover="this.style.textDecoration='underline'"
+                         onmouseout="this.style.textDecoration='none'">
+                        ${family.booking_ref}
+                      </a>
+                    </td>
                     <td>
                       ${children.length > 0 ? `<strong>Children:</strong> ${children.map(c => c.name).join(', ')}<br>` : ''}
                       ${adults.length > 0 ? `<strong>Adults:</strong> ${adults.map(a => a.name).join(', ')}` : ''}
@@ -882,22 +889,13 @@
                       })()}
                     </td>
                     <td>
-                      <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
-                        <button 
-                          class="btn btn-info btn-small" 
-                          onclick="editFamily('${family.access_key}')"
-                          style="white-space: nowrap;"
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          class="btn btn-warning btn-small" 
-                          onclick="deleteFamily('${family.access_key}', '${family.booking_ref}')"
-                          style="white-space: nowrap;"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      <button 
+                        class="btn btn-warning btn-small" 
+                        onclick="deleteFamily('${family.access_key}', '${family.booking_ref}')"
+                        style="white-space: nowrap;"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 `;
