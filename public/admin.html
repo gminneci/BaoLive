@@ -408,20 +408,19 @@
                         </thead>
                         <tbody>
                             ${payments.map(payment => {
-                                const isCancelled = payment.cancelled === 1;
-                                const rowStyle = isCancelled ? 'opacity: 0.5; text-decoration: line-through; color: #999;' : '';
+                                const isCancelled = payment.cancelled == 1 || payment.cancelled === true;
                                 return `
-                                <tr style="${rowStyle}">
-                                    <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
-                                    <td><strong>${payment.booking_ref}</strong></td>
-                                    <td>£${payment.amount.toFixed(2)}${isCancelled ? ' <span style="color: var(--sunset-orange); font-weight: bold;">(VOIDED)</span>' : ''}</td>
-                                    <td>${payment.notes || '-'}</td>
+                                <tr style="${isCancelled ? 'opacity: 0.5;' : ''}">
+                                    <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}">${new Date(payment.payment_date).toLocaleDateString()}</td>
+                                    <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}"><strong>${payment.booking_ref}</strong></td>
+                                    <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}">£${payment.amount.toFixed(2)}${isCancelled ? ' <span style="color: var(--sunset-orange); font-weight: bold; text-decoration: none;">(VOIDED)</span>' : ''}</td>
+                                    <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}">${payment.notes || '-'}</td>
                                     <td>
                                         <div style="display: flex; gap: 5px;">
                                             ${!isCancelled ? `
                                                 <button class="btn btn-info btn-small" onclick="editPayment(${payment.id}, '${payment.payment_date}', ${payment.amount}, '${(payment.notes || '').replace(/'/g, "\\'")}')">Edit</button>
                                                 <button class="btn btn-warning btn-small" onclick="voidPayment(${payment.id})">Void</button>
-                                            ` : '<span style="font-style: italic;">Cancelled</span>'}
+                                            ` : '<span style="font-style: italic; color: #999;">Cancelled</span>'}
                                         </div>
                                     </td>
                                 </tr>
