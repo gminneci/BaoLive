@@ -265,6 +265,23 @@ app.put('/api/activities/:id/availability', (req, res) => {
     );
 });
 
+// Update activity details (admin)
+app.put('/api/activities/:id', (req, res) => {
+    const { id } = req.params;
+    const { name, session_time, cost, description } = req.body;
+
+    db.run(
+        'UPDATE activities SET name = ?, session_time = ?, cost = ?, description = ? WHERE id = ?',
+        [name, session_time, cost || 0, description || '', id],
+        function (err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ success: true });
+        }
+    );
+});
+
 // Get all activity signups (admin)
 app.get('/api/activity-signups', (req, res) => {
     const query = `

@@ -89,6 +89,44 @@
         </div>
     </div>
 
+    <!-- Edit Activity Modal -->
+    <div id="edit-modal" class="hidden"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+        <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Activity</h2>
+
+            <form id="edit-activity-form">
+                <input type="hidden" id="edit-activity-id">
+
+                <div class="form-group">
+                    <label>Activity Name *</label>
+                    <input type="text" id="edit-activity-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Session Time *</label>
+                    <input type="text" id="edit-activity-time" placeholder="e.g., Saturday 10:00 AM" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Cost (£)</label>
+                    <input type="number" id="edit-activity-cost" step="0.01" min="0" value="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="edit-activity-description" rows="3"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                    <button type="button" class="btn btn-warning" style="flex: 1;"
+                        onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         const API_URL = window.location.hostname === 'localhost'
             ? 'http://localhost:3001/api'
@@ -164,6 +202,13 @@
                                         </span>
                                     </td>
                                     <td>
+                                        <button 
+                                            class="btn btn-info btn-small" 
+                                            onclick="editActivity(${activity.id})"
+                                            style="margin-right: 10px;"
+                                        >
+                                            Edit
+                                        </button>
                                         ${activity.available ? `
                                             <button 
                                                 class="btn btn-warning btn-small" 
@@ -206,6 +251,63 @@
                 alert('Error updating activity availability');
             }
         }
+
+        function editActivity(activityId) {
+            const activity = allActivities.find(a => a.id === activityId);
+            if (!activity) return;
+
+            // Populate the edit form
+            document.getElementById('edit-activity-id').value = activity.id;
+            document.getElementById('edit-activity-name').value = activity.name;
+            document.getElementById('edit-activity-time').value = activity.session_time;
+            document.getElementById('edit-activity-cost').value = activity.cost;
+            document.getElementById('edit-activity-description').value = activity.description || '';
+
+            // Show the modal
+            document.getElementById('edit-modal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            document.getElementById('edit-activity-form').reset();
+        }
+
+        // Handle edit form submission
+        document.getElementById('edit-activity-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const activityId = document.getElementById('edit-activity-id').value;
+            const name = document.getElementById('edit-activity-name').value;
+            const session_time = document.getElementById('edit-activity-time').value;
+            const cost = parseFloat(document.getElementById('edit-activity-cost').value) || 0;
+            const description = document.getElementById('edit-activity-description').value;
+
+            try {
+                const response = await fetch(`${API_URL}/activities/${activityId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        session_time,
+                        cost,
+                        description
+                    })
+                });
+
+                if (response.ok) {
+                    closeEditModal();
+                    await loadAllActivities();
+                    alert('Activity updated successfully! 🎉');
+                } else {
+                    alert('Error updating activity');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating activity');
+            }
+        });
 
         async function loadActivitySignups() {
             try {
