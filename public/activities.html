@@ -44,9 +44,10 @@
         </div>
 
         <div class="card text-center" id="save-close-section" class="hidden">
-            <button class="btn btn-primary btn-block" onclick="saveAllAndClose()">
-                💾 Save and Close
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="applyChanges()">💾 Apply Changes</button>
+                <button class="btn btn-secondary" style="flex: 1;" onclick="exitToHome()">🏠 Exit</button>
+            </div>
         </div>
     </div>
 
@@ -474,7 +475,7 @@
             }
         }
 
-        async function saveAllAndClose() {
+        async function applyChanges() {
             const activitiesToSave = [];
             
             // Collect all activities with their selected children
@@ -517,16 +518,18 @@
             }
 
             if (allSuccess) {
-                showAlert('All activities saved successfully! ✓ You can now close this page.', 'success');
+                showAlert('All activities updated successfully! 🎉', 'success');
                 await loadMySignups();
+                await loadFamilyData();
                 renderActivities();
-                // Wait for DOM to update before calculating totals
-                setTimeout(() => {
-                    renderMySignups();
-                }, 0);
+                renderMySignups();
             } else {
-                showAlert('Error saving some activities. Please try again.', 'error');
+                showAlert('Error updating some activities. Please try again.', 'error');
             }
+        }
+
+        function exitToHome() {
+            window.location.href = 'index.html';
         }
     </script>
 </body>
