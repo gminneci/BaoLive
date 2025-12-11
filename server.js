@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const session = require('express-session');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { db, initDatabase } = require('./database');
 
 const app = express();
@@ -9,6 +12,69 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Auth setup (Google OAuth)
+const AUTH_ENABLED = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+if (AUTH_ENABLED) {
+    app.use(session({
+        secret: process.env.SESSION_SECRET || 'replace-this-session-secret',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { secure: false }
+    }));
+
+    passport.use(new GoogleStrategy({
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL || '/auth/google/callback'
+    }, (accessToken, refreshToken, profile, done) => {
+        const emails = profile.emails || [];
+        const email = emails.length ? emails[0].value : null;
+        const allowList = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
+        const isGmail = email && email.toLowerCase().endsWith('@gmail.com');
+        const allowed = allowList.length > 0 ? allowList.includes(email) : isGmail;
+        if (!allowed) {
+            return done(null, false, { message: 'Not authorized' });
+        }
+        return done(null, { id: profile.id, email, name: profile.displayName });
+    }));
+
+    passport.serializeUser((user, done) => {
+        done(null, user);
+    });
+    passport.deserializeUser((obj, done) => {
+        done(null, obj);
+    });
+
+    app.use(passport.initialize());
+    app.use(passport.session());
+
+    // Protect /admin.html before static serving
+    app.use((req, res, next) => {
+        if (req.path === '/admin.html') {
+            if (req.isAuthenticated && req.isAuthenticated()) return next();
+            return res.redirect('/auth/google');
+        }
+        next();
+    });
+
+    // Auth routes
+    app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+    app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login.html' }),
+        (req, res) => {
+            res.redirect('/admin.html');
+        }
+    );
+    app.get('/logout', (req, res) => {
+        req.logout(() => {
+            res.redirect('/');
+        });
+    });
+} else {
+    console.warn('Auth disabled: Set GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET to enable admin auth.');
+}
+
+// Static files
 app.use(express.static('public'));
 
 // Initialize database
@@ -258,7 +324,13 @@ app.get('/api/activities/all', (req, res) => {
 });
 
 // Create activity (admin)
-app.post('/api/activities', (req, res) => {
+const requireAdmin = (req, res, next) => {
+    if (!AUTH_ENABLED) return next();
+    if (req.isAuthenticated && req.isAuthenticated()) return next();
+    return res.status(401).json({ error: 'Unauthorized' });
+};
+
+app.post('/api/activities', requireAdmin, (req, res) => {
     const { name, session_time, cost, description, max_participants, available } = req.body;
 
     db.run(
@@ -274,7 +346,7 @@ app.post('/api/activities', (req, res) => {
 });
 
 // Toggle activity availability (admin)
-app.put('/api/activities/:id/availability', (req, res) => {
+app.put('/api/activities/:id/availability', requireAdmin, (req, res) => {
     const { id } = req.params;
     const { available } = req.body;
 
@@ -291,7 +363,7 @@ app.put('/api/activities/:id/availability', (req, res) => {
 });
 
 // Update activity details (admin)
-app.put('/api/activities/:id', (req, res) => {
+app.put('/api/activities/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     const { name, session_time, cost, description, max_participants } = req.body;
 
@@ -308,7 +380,7 @@ app.put('/api/activities/:id', (req, res) => {
 });
 
 // Delete activity (admin)
-app.delete('/api/activities/:id', (req, res) => {
+app.delete('/api/activities/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
 
     db.run('DELETE FROM activities WHERE id = ?', [id], function (err) {

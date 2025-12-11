@@ -506,9 +506,10 @@
                     <td>${family.camping_type === 'tent' ? '⛺ Tent' : '🚐 Campervan'}</td>
                     <td>${family.nights.join(', ')}</td>
                     <td>
-                      ${seftonChildren.map(c =>
-                    `${c.name} (Year ${c.year || '?'}, ${c.class || 'N/A'})`
-                ).join('<br>') || 'None'}
+                                            ${seftonChildren.map(c => {
+                                        const yearLabel = c.year === 'Reception' ? 'Reception' : `Year ${c.year || '?'}`;
+                                        return `${c.name} (${yearLabel}, ${c.class || 'N/A'})`;
+                                }).join('<br>') || 'None'}
                     </td>
                     <td>
                       <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
@@ -777,6 +778,7 @@
                         <label>Year</label>
                         <select name="edit-member-year-${editMemberCount}" id="edit-member-year-${editMemberCount}">
                             <option value="">Select Year</option>
+                            <option value="Reception" ${data?.year === 'Reception' ? 'selected' : ''}>Reception</option>
                             <option value="1" ${data?.year === '1' ? 'selected' : ''}>Year 1</option>
                             <option value="2" ${data?.year === '2' ? 'selected' : ''}>Year 2</option>
                             <option value="3" ${data?.year === '3' ? 'selected' : ''}>Year 3</option>

@@ -163,6 +163,7 @@
             <label>Year</label>
             <select name="member-year-${memberCount}" id="member-year-${memberCount}">
               <option value="">Select Year</option>
+                            <option value="Reception" ${data?.year === 'Reception' ? 'selected' : ''}>Reception</option>
               <option value="1" ${data?.year === '1' ? 'selected' : ''}>Year 1</option>
               <option value="2" ${data?.year === '2' ? 'selected' : ''}>Year 2</option>
               <option value="3" ${data?.year === '3' ? 'selected' : ''}>Year 3</option>
