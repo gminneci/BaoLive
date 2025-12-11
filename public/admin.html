@@ -435,7 +435,10 @@
 
         function editPayment(id, date, amount, notes) {
             document.getElementById('edit-payment-id').value = id;
-            document.getElementById('edit-payment-date').value = date.split('T')[0];
+            // Format date for HTML date input (YYYY-MM-DD)
+            const dateObj = new Date(date);
+            const formattedDate = dateObj.toISOString().split('T')[0];
+            document.getElementById('edit-payment-date').value = formattedDate;
             document.getElementById('edit-payment-amount').value = amount;
             document.getElementById('edit-payment-notes').value = notes === '-' ? '' : notes;
             document.getElementById('edit-payment-modal').style.display = 'flex';
