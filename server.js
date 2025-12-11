@@ -651,11 +651,11 @@ app.delete('/api/payments/:id', requireAdmin, (req, res) => {
 // Update a payment (admin)
 app.put('/api/payments/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
-    const { amount, notes } = req.body;
+    const { payment_date, amount, notes } = req.body;
     
     db.run(
-        'UPDATE payments SET amount = ?, notes = ? WHERE id = ?',
-        [amount, notes || null, id],
+        'UPDATE payments SET payment_date = ?, amount = ?, notes = ? WHERE id = ?',
+        [payment_date, amount, notes || null, id],
         function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
