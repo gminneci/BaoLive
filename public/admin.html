@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=2">
     <title>Admin Dashboard - Sefton Park Camping</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -229,6 +229,13 @@
         let families = [];
         let activitySignups = [];
         let allActivities = [];
+        
+        // Sorting state
+        let sortState = {
+            activities: { column: null, ascending: true },
+            families: { column: null, ascending: true },
+            signups: { column: null, ascending: true }
+        };
 
         window.addEventListener('DOMContentLoaded', async () => {
             await loadFamilies();
@@ -278,6 +285,16 @@
             }
         }
 
+        function sortActivities(column) {
+            if (sortState.activities.column === column) {
+                sortState.activities.ascending = !sortState.activities.ascending;
+            } else {
+                sortState.activities.column = column;
+                sortState.activities.ascending = true;
+            }
+            renderAllActivities();
+        }
+
         function renderAllActivities() {
             const container = document.getElementById('manage-activities-container');
 
@@ -286,21 +303,67 @@
                 return;
             }
 
+            // Sort activities if a column is selected
+            let sortedActivities = [...allActivities];
+            if (sortState.activities.column) {
+                sortedActivities.sort((a, b) => {
+                    let aVal, bVal;
+                    const signupsA = activitySignups ? activitySignups.filter(s => s.activity_id === a.id) : [];
+                    const signupsB = activitySignups ? activitySignups.filter(s => s.activity_id === b.id) : [];
+                    const participantsA = signupsA.reduce((sum, s) => sum + s.children.length, 0);
+                    const participantsB = signupsB.reduce((sum, s) => sum + s.children.length, 0);
+                    
+                    switch (sortState.activities.column) {
+                        case 'activity':
+                            aVal = a.name.toLowerCase();
+                            bVal = b.name.toLowerCase();
+                            break;
+                        case 'time':
+                            aVal = a.session_time;
+                            bVal = b.session_time;
+                            break;
+                        case 'cost':
+                            aVal = a.cost;
+                            bVal = b.cost;
+                            break;
+                        case 'capacity':
+                            aVal = participantsA;
+                            bVal = participantsB;
+                            break;
+                        case 'status':
+                            aVal = a.available ? 1 : 0;
+                            bVal = b.available ? 1 : 0;
+                            break;
+                    }
+                    
+                    if (aVal < bVal) return sortState.activities.ascending ? -1 : 1;
+                    if (aVal > bVal) return sortState.activities.ascending ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            const getSortIndicator = (column) => {
+                if (sortState.activities.column === column) {
+                    return sortState.activities.ascending ? ' ↑' : ' ↓';
+                }
+                return '';
+            };
+
             container.innerHTML = `
                 <div style="overflow-x: auto;">
                     <table>
                         <thead>
                             <tr>
-                                <th>Activity</th>
-                                <th>Session Time</th>
-                                <th>Cost</th>
-                                <th>Capacity</th>
-                                <th>Status</th>
+                                <th onclick="sortActivities('activity')" style="cursor: pointer;">Activity${getSortIndicator('activity')}</th>
+                                <th onclick="sortActivities('time')" style="cursor: pointer;">Session Time${getSortIndicator('time')}</th>
+                                <th onclick="sortActivities('cost')" style="cursor: pointer;">Cost${getSortIndicator('cost')}</th>
+                                <th onclick="sortActivities('capacity')" style="cursor: pointer;">Capacity${getSortIndicator('capacity')}</th>
+                                <th onclick="sortActivities('status')" style="cursor: pointer;">Status${getSortIndicator('status')}</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${allActivities.map(activity => {
+                            ${sortedActivities.map(activity => {
                                 // Calculate current participants (check if activitySignups is loaded)
                                 const signupsForActivity = activitySignups ? activitySignups.filter(s => s.activity_id === activity.id) : [];
                                 const currentParticipants = signupsForActivity.reduce((sum, s) => sum + s.children.length, 0);
@@ -469,6 +532,16 @@
             }
         }
 
+        function sortFamilies(column) {
+            if (sortState.families.column === column) {
+                sortState.families.ascending = !sortState.families.ascending;
+            } else {
+                sortState.families.column = column;
+                sortState.families.ascending = true;
+            }
+            renderFamilies();
+        }
+
         function renderFamilies() {
             const container = document.getElementById('families-container');
 
@@ -477,21 +550,63 @@
                 return;
             }
 
+            // Sort families if a column is selected
+            let sortedFamilies = [...families];
+            if (sortState.families.column) {
+                sortedFamilies.sort((a, b) => {
+                    let aVal, bVal;
+                    
+                    switch (sortState.families.column) {
+                        case 'booking':
+                            aVal = a.booking_ref.toLowerCase();
+                            bVal = b.booking_ref.toLowerCase();
+                            break;
+                        case 'members':
+                            aVal = a.members.length;
+                            bVal = b.members.length;
+                            break;
+                        case 'camping':
+                            aVal = a.camping_type;
+                            bVal = b.camping_type;
+                            break;
+                        case 'nights':
+                            aVal = a.nights.length;
+                            bVal = b.nights.length;
+                            break;
+                        case 'students':
+                            aVal = a.members.filter(m => m.is_child && m.in_sefton_park).length;
+                            bVal = b.members.filter(m => m.is_child && m.in_sefton_park).length;
+                            break;
+                    }
+                    
+                    if (aVal < bVal) return sortState.families.ascending ? -1 : 1;
+                    if (aVal > bVal) return sortState.families.ascending ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            const getSortIndicator = (column) => {
+                if (sortState.families.column === column) {
+                    return sortState.families.ascending ? ' ↑' : ' ↓';
+                }
+                return '';
+            };
+
             container.innerHTML = `
         <div style="overflow-x: auto;">
           <table>
             <thead>
               <tr>
-                <th>Booking Ref</th>
-                <th>Family Members</th>
-                <th>Camping Type</th>
-                <th>Nights</th>
-                <th>Sefton Park Students</th>
+                <th onclick="sortFamilies('booking')" style="cursor: pointer;">Booking Ref${getSortIndicator('booking')}</th>
+                <th onclick="sortFamilies('members')" style="cursor: pointer;">Family Members${getSortIndicator('members')}</th>
+                <th onclick="sortFamilies('camping')" style="cursor: pointer;">Camping Type${getSortIndicator('camping')}</th>
+                <th onclick="sortFamilies('nights')" style="cursor: pointer;">Nights${getSortIndicator('nights')}</th>
+                <th onclick="sortFamilies('students')" style="cursor: pointer;">Sefton Park Students${getSortIndicator('students')}</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              ${families.map(family => {
+              ${sortedFamilies.map(family => {
                 const children = family.members.filter(m => m.is_child);
                 const adults = family.members.filter(m => !m.is_child);
                 const seftonChildren = family.members.filter(m => m.is_child && m.in_sefton_park);
@@ -542,6 +657,16 @@
       `;
         }
 
+        function sortSignups(column) {
+            if (sortState.signups.column === column) {
+                sortState.signups.ascending = !sortState.signups.ascending;
+            } else {
+                sortState.signups.column = column;
+                sortState.signups.ascending = true;
+            }
+            renderActivitySignups();
+        }
+
         function renderActivitySignups() {
             const container = document.getElementById('activities-container');
 
@@ -550,22 +675,68 @@
                 return;
             }
 
+            // Sort signups if a column is selected
+            let sortedSignups = [...activitySignups];
+            if (sortState.signups.column) {
+                sortedSignups.sort((a, b) => {
+                    let aVal, bVal;
+                    
+                    switch (sortState.signups.column) {
+                        case 'activity':
+                            aVal = a.activity_name.toLowerCase();
+                            bVal = b.activity_name.toLowerCase();
+                            break;
+                        case 'time':
+                            aVal = a.session_time;
+                            bVal = b.session_time;
+                            break;
+                        case 'booking':
+                            aVal = a.booking_ref.toLowerCase();
+                            bVal = b.booking_ref.toLowerCase();
+                            break;
+                        case 'children':
+                            aVal = a.children.length;
+                            bVal = b.children.length;
+                            break;
+                        case 'cost':
+                            aVal = a.cost * a.children.length;
+                            bVal = b.cost * b.children.length;
+                            break;
+                        case 'payment':
+                            aVal = a.paid ? 1 : 0;
+                            bVal = b.paid ? 1 : 0;
+                            break;
+                    }
+                    
+                    if (aVal < bVal) return sortState.signups.ascending ? -1 : 1;
+                    if (aVal > bVal) return sortState.signups.ascending ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            const getSortIndicator = (column) => {
+                if (sortState.signups.column === column) {
+                    return sortState.signups.ascending ? ' ↑' : ' ↓';
+                }
+                return '';
+            };
+
             container.innerHTML = `
         <div style="overflow-x: auto;">
           <table>
             <thead>
               <tr>
-                <th>Activity</th>
-                <th>Session Time</th>
-                <th>Booking Ref</th>
-                <th>Children</th>
-                <th>Cost</th>
-                <th>Payment Status</th>
+                <th onclick="sortSignups('activity')" style="cursor: pointer;">Activity${getSortIndicator('activity')}</th>
+                <th onclick="sortSignups('time')" style="cursor: pointer;">Session Time${getSortIndicator('time')}</th>
+                <th onclick="sortSignups('booking')" style="cursor: pointer;">Booking Ref${getSortIndicator('booking')}</th>
+                <th onclick="sortSignups('children')" style="cursor: pointer;">Children${getSortIndicator('children')}</th>
+                <th onclick="sortSignups('cost')" style="cursor: pointer;">Cost${getSortIndicator('cost')}</th>
+                <th onclick="sortSignups('payment')" style="cursor: pointer;">Payment Status${getSortIndicator('payment')}</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              ${activitySignups.map(signup => {
+              ${sortedSignups.map(signup => {
                 const totalCost = signup.cost * signup.children.length;
                 return `
                   <tr>

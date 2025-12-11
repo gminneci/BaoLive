@@ -88,26 +88,18 @@ Railway automatically builds and runs this Node.js app and persists the SQLite d
 - The server binds to `0.0.0.0` and uses `PORT` (already configured)
 - Railway will provide a public URL like `https://<app>.up.railway.app`
 
-### 3) Environment variables (for Admin auth)
+### 3) Environment variables
 Add these in Railway → Service → Variables:
-- `GOOGLE_CLIENT_ID`: From Google Cloud OAuth credentials
-- `GOOGLE_CLIENT_SECRET`: From Google Cloud
-- `GOOGLE_CALLBACK_URL`: `https://<your-app>.up.railway.app/auth/google/callback`
-- `SESSION_SECRET`: Any long random string
-- `ADMIN_EMAILS` (optional): Comma-separated allowlist; if omitted, any `@gmail.com` can access admin
+- `ADMIN_PASSWORD`: Set a secure password for admin access
+- `SESSION_SECRET`: Any long random string for session cookies
 
-### 4) Google OAuth setup
-In Google Cloud Console:
-- Create OAuth 2.0 Client ID (Web application)
-- Authorized redirect URI: `https://<your-app>.up.railway.app/auth/google/callback`
-- Copy Client ID and Secret into Railway variables above
-
-### 5) Production API base URL
+### 4) Production API base URL
 The frontend uses [public/common.js](public/common.js). In production it points to `https://<your-app>.up.railway.app/api`.
 
-### 6) Admin protection
-- Visiting [public/admin.html](public/admin.html) without auth redirects to Google sign-in
-- Admin-only APIs (create/update/delete activities) require auth
+### 5) Admin protection
+- Visiting [public/admin.html](public/admin.html) without auth redirects to login page
+- Admin dashboard requires password set in `ADMIN_PASSWORD` environment variable
+- Admin-only APIs (create/update/delete activities) require authentication
 - Family registration and activity signup endpoints remain public
 
 ### Troubleshooting
@@ -118,7 +110,7 @@ git add package-lock.json
 git commit -m "Update lockfile"
 git push
 ```
-- Confirm your public URL and `GOOGLE_CALLBACK_URL` match exactly
+- Ensure `ADMIN_PASSWORD` environment variable is set in Railway
 - Check logs in Railway Deployments for runtime errors
 
 ## Security Notes
@@ -127,7 +119,7 @@ git push
 - **No Sensitive Data**: Only camping trip information is stored
 - **Payment Links**: Currently using dummy links - configure external payment provider as needed
 - **Access Control**: Simple family-based access (suitable for low-sensitivity data)
-   - Admin is protected via Google OAuth in production
+- **Admin Protection**: Password-based authentication using environment variable (not stored in code)
 
 ## Future Enhancements
 

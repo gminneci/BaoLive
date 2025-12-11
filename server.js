@@ -12,16 +12,11 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Load admin emails from config file
-let ADMIN_EMAILS = [];
-try {
-    const configPath = path.join(__dirname, 'admin-config.json');
-    const configData = fs.readFileSync(configPath, 'utf8');
-    const config = JSON.parse(configData);
-    ADMIN_EMAILS = (config.adminEmails || []).map(e => e.trim().toLowerCase());
-    console.log(`Loaded ${ADMIN_EMAILS.length} admin email(s) from config`);
-} catch (error) {
-    console.warn('Could not load admin-config.json, admin access will be restricted');
+// Admin password from environment variable
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+if (!ADMIN_PASSWORD) {
+    console.warn('WARNING: ADMIN_PASSWORD environment variable not set. Admin access will not work.');
 }
 
 // Session setup
@@ -35,7 +30,7 @@ app.use(session({
 // Protect /admin.html before static serving
 app.use((req, res, next) => {
     if (req.path === '/admin.html') {
-        if (req.session.adminEmail) return next();
+        if (req.session.isAdmin) return next();
         return res.redirect('/login.html');
     }
     next();
@@ -46,21 +41,19 @@ app.use(express.static('public'));
 
 // Auth routes
 app.post('/api/auth/signin', (req, res) => {
-    const { email } = req.body;
-    if (!email) {
-        return res.status(400).json({ error: 'Email required' });
+    const { password } = req.body;
+    if (!password) {
+        return res.status(400).json({ error: 'Password required' });
     }
     
-    const normalizedEmail = email.trim().toLowerCase();
-    
-    // Check if email is in allowlist
-    if (ADMIN_EMAILS.length === 0 || !ADMIN_EMAILS.includes(normalizedEmail)) {
-        return res.status(403).json({ error: 'Access denied. Only authorized emails are allowed.' });
+    // Check password against environment variable
+    if (!ADMIN_PASSWORD || password !== ADMIN_PASSWORD) {
+        return res.status(403).json({ error: 'Invalid password' });
     }
     
-    // Store email in session
-    req.session.adminEmail = normalizedEmail;
-    return res.json({ success: true, email: normalizedEmail });
+    // Mark session as authenticated
+    req.session.isAdmin = true;
+    return res.json({ success: true });
 });
 
 app.get('/api/auth/signout', (req, res) => {
@@ -69,8 +62,8 @@ app.get('/api/auth/signout', (req, res) => {
 });
 
 app.get('/api/auth/session', (req, res) => {
-    if (req.session.adminEmail) {
-        return res.json({ authenticated: true, email: req.session.adminEmail });
+    if (req.session.isAdmin) {
+        return res.json({ authenticated: true });
     }
     return res.json({ authenticated: false });
 });
@@ -195,6 +188,17 @@ app.get('/api/families/booking/:bookingRef', (req, res) => {
             return res.status(404).json({ error: 'Family not found' });
         }
         res.json(transformFamilyRow(row));
+    });
+});
+
+// Check if booking reference exists
+app.get('/api/families/check/:bookingRef', (req, res) => {
+    const { bookingRef } = req.params;
+    db.get('SELECT id, booking_ref FROM families WHERE booking_ref = ?', [bookingRef], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ exists: !!row });
     });
 });
 
@@ -323,7 +327,7 @@ app.get('/api/activities/all', (req, res) => {
 
 // Create activity (admin)
 const requireAdmin = (req, res, next) => {
-    if (req.session.adminEmail) return next();
+    if (req.session.isAdmin) return next();
     return res.status(401).json({ error: 'Unauthorized' });
 };
 

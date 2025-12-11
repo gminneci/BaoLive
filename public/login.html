@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2">
   <title>Admin Login</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -11,18 +12,18 @@
     <div class="card">
       <div style="text-center;">
         <h2 style="color: var(--forest-green); text-align: center;">Admin Login</h2>
-        <p style="text-align: center; margin-bottom: 20px; color: var(--slate-grey);">Enter your email to continue</p>
+        <p style="text-align: center; margin-bottom: 20px; color: var(--slate-grey);">Enter the admin password</p>
       </div>
       
       <form id="signin-form" onsubmit="handleSubmit(event)">
         <div id="error-message" style="display: none; background: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem;"></div>
         
         <div class="form-group">
-          <label>Email Address</label>
+          <label>Password</label>
           <input 
-            type="email" 
-            id="email" 
-            placeholder="your@email.com" 
+            type="password" 
+            id="password" 
+            placeholder="Enter admin password" 
             required
             style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;"
           >
@@ -48,7 +49,7 @@
     async function handleSubmit(event) {
       event.preventDefault();
       
-      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
       const errorDiv = document.getElementById('error-message');
       const submitBtn = document.getElementById('submit-btn');
       
@@ -62,14 +63,14 @@
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ email })
+          body: JSON.stringify({ password })
         });
         
         if (response.ok) {
           window.location.href = '/admin.html';
         } else {
           const data = await response.json();
-          errorDiv.textContent = data.error || 'Access denied. Only authorized emails are allowed.';
+          errorDiv.textContent = data.error || 'Invalid password';
           errorDiv.style.display = 'block';
           submitBtn.disabled = false;
           submitBtn.textContent = 'Continue';
