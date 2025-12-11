@@ -1,0 +1,30 @@
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <title>404 Page Not Found</title>
+
+    <link rel="shortcut icon" href="https://primarysite-prod-sorted.s3.amazonaws.com/static/7.0.4/images/favicon.ico">
+
+    
+      <link rel="stylesheet" href="https://primarysite-prod-sorted.s3.amazonaws.com/static/7.0.4/gen/normalize_css.7bf5a737.css" type="text/css" media="screen">
+    
+
+    
+      <link rel="stylesheet" href="https://primarysite-prod-sorted.s3.amazonaws.com/static/7.0.4/gen/base_css.bd5c3a74.css" type="text/css" media="screen">
+    
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="ps_auth-wrapper">
+        <h1>Server Error: Code 404</h1>
+        <h2 class="message">Sorry, the page you are looking for cannot be found</h2>
+        <p>Please go back to the previous page, or try finding what you need from the <a href="/">home page</a></p>
+      </div>
+    </div>
+  </body>
+</html>
