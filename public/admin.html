@@ -371,7 +371,9 @@
 
         async function loadPayments() {
             try {
-                const response = await fetch(`${API_URL}/payments`);
+                const response = await fetch(`${API_URL}/payments`, {
+                    cache: 'no-store'
+                });
                 if (response.ok) {
                     payments = await response.json();
                     renderPayments();
