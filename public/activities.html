@@ -99,7 +99,7 @@
 
         async function loadFamilyData() {
             try {
-                const response = await fetch(`${API_URL}/families/access/${accessKey}`);
+            const response = await fetch(`${API_URL}/families/access/${accessKey}`, { cache: 'no-store' });
                 if (response.ok) {
                     familyData = await response.json();
                     document.getElementById('activities-container').classList.remove('hidden');
@@ -115,8 +115,8 @@
 
         async function loadActivities() {
             try {
-                // Pass access_key so we see activities we're signed up for, even if full
-                const response = await fetch(`${API_URL}/activities?access_key=${accessKey}`);
+            // Pass access_key so we see activities we're signed up for, even if full
+            const response = await fetch(`${API_URL}/activities?access_key=${accessKey}`, { cache: 'no-store' });
                 if (response.ok) {
                     activities = await response.json();
                     // Don't render yet - wait for signups to load first
@@ -129,7 +129,7 @@
 
         async function loadMySignups() {
             try {
-                const response = await fetch(`${API_URL}/activity-signups/family/${accessKey}`);
+            const response = await fetch(`${API_URL}/activity-signups/family/${accessKey}`, { cache: 'no-store' });
                 if (response.ok) {
                     mySignups = await response.json();
                     // Now render activities with pre-selected checkboxes
@@ -476,56 +476,12 @@
         }
 
         async function applyChanges() {
-            const activitiesToSave = [];
-            
-            // Collect all activities with their selected children
-            activities.forEach(activity => {
-                const checkboxes = document.querySelectorAll(`input[data-activity-id="${activity.id}"]:checked`);
-                const selectedChildren = Array.from(checkboxes).map(cb => cb.dataset.childName);
-                
-                // Include all activities, even with 0 children (to clear them if previously selected)
-                activitiesToSave.push({
-                    activity_id: activity.id,
-                    children: selectedChildren
-                });
-            });
-
-            // Save all activities
-            let allSuccess = true;
-            for (const activityData of activitiesToSave) {
-                try {
-                    const response = await fetch(`${API_URL}/activity-signups`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            activity_id: activityData.activity_id,
-                            access_key: accessKey,
-                            children: activityData.children
-                        })
-                    });
-
-                    if (!response.ok) {
-                        allSuccess = false;
-                        break;
-                    }
-                } catch (error) {
-                    console.error('Error saving activity:', error);
-                    allSuccess = false;
-                    break;
-                }
+            // Bulk re-save by delegating to per-activity saver for each activity id
+            const ids = activities.map(a => a.id);
+            for (const id of ids) {
+                await saveActivitySelection(id);
             }
-
-            if (allSuccess) {
-                showAlert('All activities updated successfully! 🎉', 'success');
-                await loadMySignups();
-                await loadFamilyData();
-                renderActivities();
-                renderMySignups();
-            } else {
-                showAlert('Error updating some activities. Please try again.', 'error');
-            }
+            showAlert('All activities updated successfully! 🎉', 'success');
         }
 
         function exitToHome() {
