@@ -33,7 +33,7 @@
                         📝 Sign-ups
                     </button>
                     <button class="tab-button" onclick="switchTab('payments')" id="tab-payments">
-                        💰 Transactions
+                        💰 Payments
                     </button>
                 </div>
             </div>
@@ -262,6 +262,45 @@
         </div>
     </div>
 
+    <!-- Edit Payment Modal -->
+    <div id="edit-payment-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+        <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Payment</h2>
+
+            <form id="edit-payment-form">
+                <input type="hidden" id="edit-payment-id">
+
+                <div class="form-group">
+                    <label>Payment Date *</label>
+                    <input type="date" id="edit-payment-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Amount (£) *</label>
+                    <input type="number" id="edit-payment-amount" step="0.01" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="edit-payment-notes" rows="3" placeholder="Optional notes about this payment"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                    <button type="button" class="btn btn-warning" style="flex: 1;"
+                        onclick="closeEditPaymentModal()">Cancel</button>
+                </div>
+                
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #eee;">
+                    <button type="button" class="btn btn-warning btn-block" onclick="deletePaymentFromModal()">
+                        🗑️ Delete Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="common.js"></script>
     <script>
         let families = [];
@@ -395,21 +434,23 @@
         }
 
         function editPayment(id, date, amount, notes) {
-            const newDate = prompt('Enter payment date (YYYY-MM-DD):', date.split('T')[0]);
-            if (newDate === null) return;
-            
-            const newAmount = prompt('Enter amount:', amount);
-            if (newAmount === null) return;
-            
-            const newNotes = prompt('Enter notes (optional):', notes === '-' ? '' : notes);
-            if (newNotes === null) return;
-            
-            const shouldDelete = confirm('Do you want to DELETE this transaction?\n\nClick OK to delete, or Cancel to save changes.');
-            
-            if (shouldDelete) {
+            document.getElementById('edit-payment-id').value = id;
+            document.getElementById('edit-payment-date').value = date.split('T')[0];
+            document.getElementById('edit-payment-amount').value = amount;
+            document.getElementById('edit-payment-notes').value = notes === '-' ? '' : notes;
+            document.getElementById('edit-payment-modal').style.display = 'flex';
+        }
+
+        function closeEditPaymentModal() {
+            document.getElementById('edit-payment-modal').style.display = 'none';
+            document.getElementById('edit-payment-form').reset();
+        }
+
+        function deletePaymentFromModal() {
+            const id = document.getElementById('edit-payment-id').value;
+            if (confirm('Are you sure you want to delete this payment?')) {
+                closeEditPaymentModal();
                 deletePayment(id);
-            } else {
-                updatePayment(id, newDate, parseFloat(newAmount), newNotes);
             }
         }
 
@@ -634,6 +675,19 @@
             document.getElementById('add-modal').style.display = 'none';
             document.getElementById('add-activity-form').reset();
         }
+
+        // Handle edit payment form submission
+        document.getElementById('edit-payment-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const paymentId = document.getElementById('edit-payment-id').value;
+            const date = document.getElementById('edit-payment-date').value;
+            const amount = parseFloat(document.getElementById('edit-payment-amount').value);
+            const notes = document.getElementById('edit-payment-notes').value;
+
+            await updatePayment(paymentId, date, amount, notes);
+            closeEditPaymentModal();
+        });
 
         // Handle edit form submission
         document.getElementById('edit-activity-form').addEventListener('submit', async (e) => {
