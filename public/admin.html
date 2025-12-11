@@ -329,64 +329,28 @@
 
         async function loadFamilies() {
             try {
-                console.log('Loading families from:', `${API_URL}/families`);
-                const response = await fetch(`${API_URL}/families`, {
-                    cache: 'no-store'
-                });
-                console.log('Families response status:', response.status);
-                if (response.ok) {
-                    families = await response.json();
-                    console.log('Families loaded:', families.length);
-                    renderFamilies();
-                } else {
-                    console.error('Families response not ok:', response.status);
-                    document.getElementById('families-container').innerHTML =
-                        '<p class="alert alert-error">Error loading families</p>';
-                }
+                families = await fetchJSON(`${API_URL}/families`);
+                renderFamilies();
             } catch (error) {
-                console.error('Error loading families:', error);
-                document.getElementById('families-container').innerHTML =
-                    '<p class="alert alert-error">Error loading families: ' + error.message + '</p>';
+                document.getElementById('families-container').innerHTML = '<p class="alert alert-error">Error loading families</p>';
             }
         }
 
         async function loadAllActivities() {
             try {
-                console.log('Loading activities from:', `${API_URL}/activities/all`);
-                const response = await fetch(`${API_URL}/activities/all`);
-                console.log('Activities response status:', response.status);
-                if (response.ok) {
-                    allActivities = await response.json();
-                    console.log('Activities loaded:', allActivities.length);
-                    renderAllActivities();
-                } else {
-                    console.error('Activities response not ok:', response.status);
-                    document.getElementById('manage-activities-container').innerHTML =
-                        '<p class="alert alert-error">Error loading activities</p>';
-                }
+                allActivities = await fetchJSON(`${API_URL}/activities/all`);
+                renderAllActivities();
             } catch (error) {
-                console.error('Error loading activities:', error);
-                document.getElementById('manage-activities-container').innerHTML =
-                    '<p class="alert alert-error">Error loading activities: ' + error.message + '</p>';
+                document.getElementById('manage-activities-container').innerHTML = '<p class="alert alert-error">Error loading activities</p>';
             }
         }
 
         async function loadPayments() {
             try {
-                const response = await fetch(`${API_URL}/payments`, {
-                    cache: 'no-store'
-                });
-                if (response.ok) {
-                    payments = await response.json();
-                    renderPayments();
-                } else {
-                    document.getElementById('payments-container').innerHTML =
-                        '<p class="alert alert-error">Error loading payments</p>';
-                }
+                payments = await fetchJSON(`${API_URL}/payments`);
+                renderPayments();
             } catch (error) {
-                console.error('Error loading payments:', error);
-                document.getElementById('payments-container').innerHTML =
-                    '<p class="alert alert-error">Error loading payments</p>';
+                document.getElementById('payments-container').innerHTML = '<p class="alert alert-error">Error loading payments</p>';
             }
         }
 
@@ -761,24 +725,10 @@
 
         async function loadActivitySignups() {
             try {
-                console.log('Loading signups from:', `${API_URL}/activity-signups`);
-                const response = await fetch(`${API_URL}/activity-signups`, {
-                    cache: 'no-store'
-                });
-                console.log('Signups response status:', response.status);
-                if (response.ok) {
-                    activitySignups = await response.json();
-                    console.log('Signups loaded:', activitySignups.length);
-                    renderActivitySignups();
-                } else {
-                    console.error('Signups response not ok:', response.status);
-                    document.getElementById('activities-container').innerHTML =
-                        '<p class="alert alert-error">Error loading activity signups</p>';
-                }
+                activitySignups = await fetchJSON(`${API_URL}/activity-signups`);
+                renderActivitySignups();
             } catch (error) {
-                console.error('Error loading activity signups:', error);
-                document.getElementById('activities-container').innerHTML =
-                    '<p class="alert alert-error">Error loading activity signups: ' + error.message + '</p>';
+                document.getElementById('activities-container').innerHTML = '<p class="alert alert-error">Error loading activity signups</p>';
             }
         }
 
