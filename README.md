@@ -4,12 +4,14 @@ A web application to organize a school camping trip for Year 3 classes (Baobab a
 
 ## Features
 
-- **Family Registration**: Parents register with their Mendip Basecamp booking reference
-- **Activity Sign-ups**: Sign up children for optional activities (tobogganing, archery, etc.)
-- **Payment Tracking**: Track which families have paid for activities
-- **Admin Dashboard**: View all registrations and activity sign-ups
-- **CSV Export**: Export data to paste into Google Sheets
-- **Family Access**: Parents can view/edit their registration using child names
+- **Family Registration**: Register with Mendip Basecamp booking reference
+- **Activity Sign-ups**: Real-time updates as you tick/untick children
+- **Family-level Payments**: Record payments per family (not per activity)
+- **Payment Status**: Live totals (owed/paid/outstanding) based on signups and payments
+- **Admin Dashboard**: Manage families, activities, sign-ups and payments
+- **Audit Trail**: Void/reinstate payments (soft delete, no hard deletion)
+- **CSV Export**: Copy data for Google Sheets
+- **Family Access**: View/edit registration using child names
 
 ## Tech Stack
 
@@ -24,19 +26,24 @@ A web application to organize a school camping trip for Year 3 classes (Baobab a
 - Node.js (v14 or higher)
 - npm
 
-### Installation
+### Installation (Local)
 
 1. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Start the server:
+2. Set a session secret (recommended):
+```bash
+export SESSION_SECRET="$(openssl rand -hex 32)"
+```
+
+3. Start the server:
 ```bash
 npm start
 ```
 
-3. Open your browser and navigate to:
+4. Open your browser and navigate to:
 ```
 http://localhost:3001
 ```
@@ -52,23 +59,29 @@ http://localhost:3001
    - Camping type (tent or campervan)
    - Which nights you're staying
 3. **Access Later**: Use "Access My Registration" with your child's name(s)
-4. **Activities**: Sign up for activities and track payment status
+4. **Activities**: Sign up for activities; totals and payment button update instantly
 
 ### For Organizers
 
 1. **Admin Dashboard**: View all registrations and activity sign-ups
-2. **Payment Tracking**: Mark activities as paid when payment is received
+2. **Payment Tracking**: Record family payments; void or reinstate as needed
 3. **Export Data**: Click "Copy CSV" to export data for Google Sheets
 4. **Add Activities**: Create new activities from the admin panel
 
 ## Database
 
-The app uses SQLite with the following structure:
+SQLite schema (simplified):
 
-- **families**: Booking reference, camping details, access key
-- **family_members**: Names, child/adult status, school details
-- **activities**: Activity name, time, cost, description
-- **activity_signups**: Links families to activities, payment status
+- **families**: booking_ref, camping_type, nights, access_key
+- **family_members**: name, is_child, in_sefton_park, year, class, family_id
+- **activities**: name, session_time, cost, description, max_participants, available
+- **activity_signups**: activity_id, family_id, children (JSON array)
+- **payments**: id, family_id, amount, payment_date, notes, cancelled (INTEGER 0/1)
+
+Notes:
+- Payments are recorded at the family level.
+- Voiding a payment sets `cancelled = 1` (kept for audit). Reinstate sets `cancelled = 0`.
+- Activity signups are removed when all children are unchecked (no empty signups).
 
 Sample activities are pre-loaded:
 - Tobogganing (Saturday 10:00 AM, £5.00)
@@ -91,15 +104,16 @@ Railway automatically builds and runs this Node.js app and persists the SQLite d
 ### 3) Environment variables
 Add these in Railway → Service → Variables:
 - `ADMIN_PASSWORD`: Set a secure password for admin access
-- `SESSION_SECRET`: Any long random string for session cookies
+- `SESSION_SECRET`: Long random string for session cookies (e.g. `openssl rand -hex 32`)
 
 ### 4) Production API base URL
-The frontend uses [public/common.js](public/common.js). In production it points to `https://<your-app>.up.railway.app/api`.
+The frontend uses [public/common.js](public/common.js). It auto-selects:
+- Local: `http://localhost:3001/api`
+- Railway: `https://<your-app>.up.railway.app/api`
 
 ### 5) Admin protection
-- Visiting [public/admin.html](public/admin.html) without auth redirects to login page
-- Admin dashboard requires password set in `ADMIN_PASSWORD` environment variable
-- Admin-only APIs (create/update/delete activities) require authentication
+- Admin endpoints require authentication (password via `ADMIN_PASSWORD`)
+- Sessions are backed by `express-session` and `SESSION_SECRET`
 - Family registration and activity signup endpoints remain public
 
 ### Troubleshooting
@@ -115,11 +129,11 @@ git push
 
 ## Security Notes
 
-- **No Email Storage**: Parents access their data using child names (no email required)
-- **No Sensitive Data**: Only camping trip information is stored
-- **Payment Links**: Currently using dummy links - configure external payment provider as needed
-- **Access Control**: Simple family-based access (suitable for low-sensitivity data)
-- **Admin Protection**: Password-based authentication using environment variable (not stored in code)
+- **Minimal PII**: No emails; access via child names and booking ref
+- **Family-level Payments**: Audit-friendly with void/reinstate (no hard delete)
+- **Sessions**: Signed cookies with `SESSION_SECRET`
+- **Availability**: Families still see full activities they are signed up for (to un-register)
+- **Caching**: Client fetches use `cache: 'no-store'` to avoid stale totals
 
 ## Future Enhancements
 
