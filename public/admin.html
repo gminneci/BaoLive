@@ -330,7 +330,9 @@
         async function loadFamilies() {
             try {
                 console.log('Loading families from:', `${API_URL}/families`);
-                const response = await fetch(`${API_URL}/families`);
+                const response = await fetch(`${API_URL}/families`, {
+                    cache: 'no-store'
+                });
                 console.log('Families response status:', response.status);
                 if (response.ok) {
                     families = await response.json();
@@ -410,6 +412,7 @@
                         </thead>
                         <tbody>
                             ${payments.map(payment => {
+                                console.log('Payment:', payment.id, 'cancelled:', payment.cancelled, 'type:', typeof payment.cancelled);
                                 const isCancelled = payment.cancelled == 1 || payment.cancelled === true;
                                 return `
                                 <tr style="${isCancelled ? 'opacity: 0.5;' : ''}">
@@ -469,13 +472,17 @@
                 });
                 if (response.ok) {
                     showAlert('Payment voided successfully', 'success');
-                    await loadPayments();
-                    await loadFamilies();
-                    await loadActivitySignups();
+                    // Force reload all data
+                    await Promise.all([
+                        loadPayments(),
+                        loadFamilies(),
+                        loadActivitySignups()
+                    ]);
                 } else {
                     showAlert('Error voiding payment', 'error');
                 }
             } catch (error) {
+                console.error('Error voiding payment:', error);
                 showAlert('Error voiding payment', 'error');
             }
         }
@@ -492,13 +499,17 @@
                 });
                 if (response.ok) {
                     showAlert('Payment reinstated successfully', 'success');
-                    await loadPayments();
-                    await loadFamilies();
-                    await loadActivitySignups();
+                    // Force reload all data
+                    await Promise.all([
+                        loadPayments(),
+                        loadFamilies(),
+                        loadActivitySignups()
+                    ]);
                 } else {
                     showAlert('Error reinstating payment', 'error');
                 }
             } catch (error) {
+                console.error('Error reinstating payment:', error);
                 showAlert('Error reinstating payment', 'error');
             }
         }
@@ -747,7 +758,9 @@
         async function loadActivitySignups() {
             try {
                 console.log('Loading signups from:', `${API_URL}/activity-signups`);
-                const response = await fetch(`${API_URL}/activity-signups`);
+                const response = await fetch(`${API_URL}/activity-signups`, {
+                    cache: 'no-store'
+                });
                 console.log('Signups response status:', response.status);
                 if (response.ok) {
                     activitySignups = await response.json();
