@@ -398,6 +398,20 @@
                 return;
             }
 
+            // Generate a descriptive payment note
+            let paymentNote = '';
+            if (mySignups && mySignups.length > 0) {
+                const details = mySignups.map(signup => {
+                    const costPerChild = signup.cost;
+                    const totalCost = costPerChild * signup.children.length;
+                    const childrenList = signup.children.join(' and ');
+                    return `£${totalCost.toFixed(2)} for ${childrenList} ${signup.activity_name}`;
+                });
+                paymentNote = details.join('; ');
+            } else {
+                paymentNote = 'Payment for outstanding balance';
+            }
+
             try {
                 const response = await fetch(`${API_URL}/payments`, {
                     method: 'POST',
@@ -407,7 +421,7 @@
                     body: JSON.stringify({
                         access_key: accessKey,
                         amount: unpaid,
-                        notes: 'Payment for outstanding balance'
+                        notes: paymentNote
                     })
                 });
 
