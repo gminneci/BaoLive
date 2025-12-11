@@ -342,49 +342,51 @@
         }
         
         async function confirmPayment() {
-            // Process payment for all unpaid signups
+            // Calculate total amount to pay
             const unpaidSignups = mySignups.filter(s => {
                 const total = s.cost * s.children.length;
                 const paid = s.paid ? s.amount_paid : 0;
                 return total > paid;
             });
             
-            let allSuccess = true;
-            
-            for (const signup of unpaidSignups) {
+            const totalAmount = unpaidSignups.reduce((sum, signup) => {
                 const total = signup.cost * signup.children.length;
                 const alreadyPaid = signup.paid ? signup.amount_paid : 0;
-                const amountToPay = total - alreadyPaid;
-                
-                try {
-                    const response = await fetch(`${API_URL}/activity-signups/${signup.id}/payment`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            paid: true,
-                            amount_paid: total // Mark as fully paid
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        allSuccess = false;
-                        break;
-                    }
-                } catch (error) {
-                    console.error('Error processing payment:', error);
-                    allSuccess = false;
-                    break;
-                }
+                return sum + (total - alreadyPaid);
+            }, 0);
+            
+            if (totalAmount <= 0) {
+                closePaymentModal();
+                showAlert('Nothing to pay!', 'info');
+                return;
             }
             
-            closePaymentModal();
-            
-            if (allSuccess) {
-                showAlert('Payment successful! ✓ Your activities are now marked as paid.', 'success');
-                await loadMySignups();
-            } else {
+            try {
+                const response = await fetch(`${API_URL}/payments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        access_key: accessKey,
+                        amount: totalAmount,
+                        notes: 'Test payment for camping activities'
+                    })
+                });
+                
+                closePaymentModal();
+                
+                if (response.ok) {
+                    showAlert(`Payment successful! ✓ £${totalAmount.toFixed(2)} has been recorded.`, 'success');
+                    await loadMySignups();
+                    await loadFamilyData(); // Refresh family data to show updated balance
+                } else {
+                    const errorData = await response.json();
+                    showAlert(`Error processing payment: ${errorData.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                closePaymentModal();
+                console.error('Error processing payment:', error);
                 showAlert('Error processing payment. Please try again.', 'error');
             }
         }
