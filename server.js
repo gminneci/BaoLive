@@ -217,7 +217,42 @@ app.get('/api/families/access/:accessKey', (req, res) => {
         if (!row) {
             return res.status(404).json({ error: 'Family not found' });
         }
-        res.json(transformFamilyRow(row));
+        
+        const family = transformFamilyRow(row);
+        
+        // Get total owed for this family
+        const owedQuery = `
+            SELECT COALESCE(SUM(a.cost * json_array_length(acs.children)), 0) as total_owed
+            FROM activity_signups acs
+            JOIN activities a ON acs.activity_id = a.id
+            WHERE acs.family_id = ?
+        `;
+        
+        db.get(owedQuery, [family.id], (owedErr, owedResult) => {
+            if (owedErr) {
+                return res.status(500).json({ error: owedErr.message });
+            }
+            
+            family.total_owed = owedResult.total_owed || 0;
+            
+            // Get total paid for this family (exclude cancelled payments)
+            const paidQuery = `
+                SELECT COALESCE(SUM(amount), 0) as total_paid
+                FROM payments
+                WHERE family_id = ? AND cancelled = 0
+            `;
+            
+            db.get(paidQuery, [family.id], (paidErr, paidResult) => {
+                if (paidErr) {
+                    return res.status(500).json({ error: paidErr.message });
+                }
+                
+                family.total_paid = paidResult.total_paid || 0;
+                family.outstanding = family.total_owed - family.total_paid;
+                
+                res.json(family);
+            });
+        });
     });
 });
 

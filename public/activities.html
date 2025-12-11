@@ -199,17 +199,6 @@
             // Display current signups
             const signupsList = mySignups.filter(s => s.children.length > 0).map(signup => {
               const activityTotal = signup.cost * signup.children.length;
-              const paidAmount = signup.paid ? signup.amount_paid : 0;
-              let paymentColor = 'var(--sunset-orange)'; // red/unpaid
-              let paymentStatus = 'Unpaid';
-              
-              if (paidAmount >= activityTotal && activityTotal > 0) {
-                paymentColor = 'var(--bright-green)'; // green/fully paid
-                paymentStatus = 'Paid ✓';
-              } else if (paidAmount > 0 && paidAmount < activityTotal) {
-                paymentColor = '#FFA500'; // yellow/partially paid
-                paymentStatus = 'Partially Paid';
-              }
               
               return `
             <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid white;">
@@ -221,8 +210,6 @@
               ${signup.cost > 0 ? `
                 <br>
                 <strong>Cost:</strong> £${signup.cost.toFixed(2)} × ${signup.children.length} = £${activityTotal.toFixed(2)}
-                <br>
-                <span style="color: ${paymentColor}; font-weight: bold;">${paymentStatus}${paidAmount > 0 ? ` (£${paidAmount.toFixed(2)})` : ''}</span>
               ` : ''}
             </div>
           `;
@@ -241,12 +228,12 @@
 
         function renderPaymentSection() {
             const paymentSection = document.getElementById('payment-status-section');
-            if (!paymentSection) return;
+            if (!paymentSection || !familyData) return;
 
-            // Calculate totals based on saved signups (not checkbox state)
-            const totalDue = mySignups.reduce((sum, signup) => sum + (signup.cost * signup.children.length), 0);
-            const totalPaid = mySignups.filter(s => s.paid).reduce((sum, signup) => sum + signup.amount_paid, 0);
-            const unpaid = totalDue - totalPaid;
+            // Use family-level payment data from the API
+            const totalDue = familyData.total_owed || 0;
+            const totalPaid = familyData.total_paid || 0;
+            const unpaid = familyData.outstanding || 0;
 
             // Show payment section if there's anything due OR if they've paid anything (even if now cancelled)
             if (totalDue > 0 || totalPaid > 0) {
