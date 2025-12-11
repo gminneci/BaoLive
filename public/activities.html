@@ -34,9 +34,6 @@
             <div id="activities-container" class="hidden">
                 <h3 style="color: var(--forest-green); margin-bottom: 20px;">Available Activities</h3>
                 <div id="activities-list"></div>
-                <button class="btn btn-primary btn-block mt-20" onclick="saveAllActivities()" style="margin-top: 30px;">
-                    💾 Update All Activities
-                </button>
             </div>
 
             <div id="my-signups" class="hidden">
@@ -186,6 +183,47 @@
           </div>
         `;
             }).join('');
+
+            // Attach real-time save handlers to checkboxes (per activity)
+            const checkboxes = document.querySelectorAll('.activity-child-checkbox');
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const activityId = parseInt(cb.dataset.activityId, 10);
+                    saveActivitySelection(activityId);
+                });
+            });
+        }
+
+        // Save selection for a single activity
+        async function saveActivitySelection(activityId) {
+            try {
+                const selected = Array.from(document.querySelectorAll(`.activity-child-checkbox[data-activity-id="${activityId}"]:checked`))
+                    .map(cb => cb.dataset.childName);
+
+                const response = await fetch(`${API_URL}/activity-signups`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        activity_id: activityId,
+                        access_key: accessKey,
+                        children: selected
+                    })
+                });
+
+                if (!response.ok) {
+                    showAlert('Error saving activity selection', 'error');
+                    return;
+                }
+
+                // Refresh data and re-render totals and signups
+                await loadMySignups();
+                await loadFamilyData();
+                renderActivities();
+                renderMySignups();
+            } catch (error) {
+                console.error('Error saving activity selection:', error);
+                showAlert('Error saving activity selection', 'error');
+            }
         }
 
         function renderMySignups() {
@@ -193,6 +231,8 @@
 
             if (mySignups.length === 0) {
                 container.innerHTML = '<p style="color: var(--earth-brown);">No activities signed up yet.</p><div id="payment-status-section"></div>';
+                // Ensure payment section renders even with zero signups (uses familyData totals)
+                renderPaymentSection();
                 return;
             }
 
