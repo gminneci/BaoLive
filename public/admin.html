@@ -566,7 +566,6 @@
                                 <th onclick="sortActivities('cost')" style="cursor: pointer;">Cost${getSortIndicator('cost')}</th>
                                 <th onclick="sortActivities('capacity')" style="cursor: pointer;">Capacity${getSortIndicator('capacity')}</th>
                                 <th onclick="sortActivities('status')" style="cursor: pointer;">Status${getSortIndicator('status')}</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -578,7 +577,15 @@
                                 
                                 return `
                                 <tr>
-                                    <td><strong>${activity.name}</strong></td>
+                                    <td>
+                                        <a href="#" 
+                                           onclick="editActivity(${activity.id}); return false;" 
+                                           style="color: var(--forest-green); text-decoration: none; font-weight: bold; cursor: pointer;"
+                                           onmouseover="this.style.textDecoration='underline'"
+                                           onmouseout="this.style.textDecoration='none'">
+                                            ${activity.name}
+                                        </a>
+                                    </td>
                                     <td>${activity.session_time}</td>
                                     <td>£${activity.cost.toFixed(2)}</td>
                                     <td>
@@ -590,36 +597,11 @@
                                         ` : '<span style="color: var(--earth-brown);">Unlimited</span>'}
                                     </td>
                                     <td>
-                                        <span class="paid-badge ${activity.available ? 'yes' : 'no'}">
-                                            ${activity.available ? 'Available' : 'Unavailable'}
+                                        <span class="paid-badge ${activity.available ? 'yes' : 'no'}" 
+                                              style="cursor: pointer;"
+                                              onclick="toggleActivityAvailability(${activity.id}, ${!activity.available})">
+                                            ${activity.available ? '✔ Available' : '❌ Unavailable'}
                                         </span>
-                                    </td>
-                                    <td>
-                                        <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
-                                            <button 
-                                                class="btn btn-info btn-small" 
-                                                onclick="editActivity(${activity.id})"
-                                            >
-                                                Edit
-                                            </button>
-                                            ${activity.available ? `
-                                                <button 
-                                                    class="btn btn-warning btn-small" 
-                                                    onclick="toggleActivityAvailability(${activity.id}, false)"
-                                                    style="white-space: nowrap;"
-                                                >
-                                                    Hide
-                                                </button>
-                                            ` : `
-                                                <button 
-                                                    class="btn btn-primary btn-small" 
-                                                    onclick="toggleActivityAvailability(${activity.id}, true)"
-                                                    style="white-space: nowrap;"
-                                                >
-                                                    Show
-                                                </button>
-                                            `}
-                                        </div>
                                     </td>
                                 </tr>
                             `}).join('')}
