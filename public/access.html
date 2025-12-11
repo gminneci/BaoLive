@@ -24,10 +24,10 @@
 
             <form id="access-form">
                 <div class="form-group">
-                    <label for="child-names">Enter Your Child's Name(s)</label>
-                    <input type="text" id="child-names" placeholder="e.g., Emma or Emma, Oliver (for twins)" required>
+                    <label for="booking-ref">Enter Your Booking Reference</label>
+                    <input type="text" id="booking-ref" placeholder="e.g., 46e9a or ABC123" required>
                     <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
-                        Enter the name(s) of your child/children exactly as you registered them
+                        The reference code you received from Mendip Basecamp
                     </small>
                 </div>
 
@@ -48,14 +48,6 @@
             ? 'http://localhost:3001/api'
             : '/api';
 
-        function generateAccessKey(childNames) {
-            return childNames
-                .split(',')
-                .map(name => name.toLowerCase().trim())
-                .sort()
-                .join('-');
-        }
-
         function showAlert(message, type = 'info') {
             const alertContainer = document.getElementById('alert-container');
             alertContainer.innerHTML = `
@@ -71,18 +63,18 @@
         document.getElementById('access-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const childNames = document.getElementById('child-names').value;
-            const accessKey = generateAccessKey(childNames);
+            const bookingRef = document.getElementById('booking-ref').value.trim();
 
             try {
-                const response = await fetch(`${API_URL}/families/access/${accessKey}`);
+                const response = await fetch(`${API_URL}/families/booking/${bookingRef}`);
 
                 if (response.ok) {
+                    const family = await response.json();
                     // Store access key and redirect to registration page
-                    localStorage.setItem('accessKey', accessKey);
+                    localStorage.setItem('accessKey', family.access_key);
                     window.location.href = 'register.html';
                 } else {
-                    showAlert('Family not found. Please check the child name(s) and try again, or create a new registration.', 'error');
+                    showAlert('Booking reference not found. Please check and try again, or create a new registration.', 'error');
                 }
             } catch (error) {
                 showAlert('Error accessing registration. Please try again.', 'error');
