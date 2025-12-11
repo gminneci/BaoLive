@@ -96,6 +96,46 @@ app.get('/api/families/access/:accessKey', (req, res) => {
     });
 });
 
+// Get family by booking reference
+app.get('/api/families/booking/:bookingRef', (req, res) => {
+    const { bookingRef } = req.params;
+
+    const query = `
+    SELECT f.*, 
+           GROUP_CONCAT(
+             json_object(
+               'id', fm.id,
+               'name', fm.name,
+               'is_child', fm.is_child,
+               'in_sefton_park', fm.in_sefton_park,
+               'year', fm.year,
+               'class', fm.class
+             )
+           ) as members
+    FROM families f
+    LEFT JOIN family_members fm ON f.id = fm.family_id
+    WHERE f.booking_ref = ?
+    GROUP BY f.id
+  `;
+
+    db.get(query, [bookingRef], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (!row) {
+            return res.status(404).json({ error: 'Family not found' });
+        }
+
+        const family = {
+            ...row,
+            nights: JSON.parse(row.nights),
+            members: row.members ? JSON.parse(`[${row.members}]`) : []
+        };
+
+        res.json(family);
+    });
+});
+
 // Create or update family
 app.post('/api/families', (req, res) => {
     const { booking_ref, members, camping_type, nights } = req.body;
