@@ -649,6 +649,18 @@ app.post('/api/payments/:id/void', requireAdmin, (req, res) => {
     });
 });
 
+// Reinstate a voided payment (admin)
+app.post('/api/payments/:id/reinstate', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    
+    db.run('UPDATE payments SET cancelled = 0 WHERE id = ?', [id], function (err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true });
+    });
+});
+
 app.delete('/api/payments/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     

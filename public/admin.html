@@ -420,7 +420,9 @@
                                             ${!isCancelled ? `
                                                 <button class="btn btn-info btn-small" onclick="editPayment(${payment.id}, '${payment.payment_date}', ${payment.amount}, '${(payment.notes || '').replace(/'/g, "\\'")}')">Edit</button>
                                                 <button class="btn btn-warning btn-small" onclick="voidPayment(${payment.id})">Void</button>
-                                            ` : '<span style="font-style: italic; color: #999;">Cancelled</span>'}
+                                            ` : `
+                                                <button class="btn btn-primary btn-small" onclick="reinstatePayment(${payment.id})">Reinstate</button>
+                                            `}
                                         </div>
                                     </td>
                                 </tr>
@@ -467,11 +469,35 @@
                     showAlert('Payment voided successfully', 'success');
                     await loadPayments();
                     await loadFamilies();
+                    await loadActivitySignups();
                 } else {
                     showAlert('Error voiding payment', 'error');
                 }
             } catch (error) {
                 showAlert('Error voiding payment', 'error');
+            }
+        }
+
+        async function reinstatePayment(id) {
+            if (!confirm('Reinstate this payment?\n\nThis will restore the payment and include it in balance calculations.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/payments/${id}/reinstate`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    showAlert('Payment reinstated successfully', 'success');
+                    await loadPayments();
+                    await loadFamilies();
+                    await loadActivitySignups();
+                } else {
+                    showAlert('Error reinstating payment', 'error');
+                }
+            } catch (error) {
+                showAlert('Error reinstating payment', 'error');
             }
         }
 
