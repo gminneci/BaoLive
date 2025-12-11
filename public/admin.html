@@ -837,7 +837,8 @@
                     <td>
                                             ${seftonChildren.map(c => {
                                         const yearLabel = c.year === 'Reception' ? 'Reception' : `Year ${c.year || '?'}`;
-                                        return `${c.name} (${yearLabel}, ${c.class || 'N/A'})`;
+                                        const classLabel = c.class ? `, ${c.class}` : '';
+                                        return `${c.name} (${yearLabel}${classLabel})`;
                                 }).join('<br>') || 'None'}
                     </td>
                     <td>
