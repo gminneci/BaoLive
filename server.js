@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
 const { db, initDatabase } = require('./database');
 
 const app = express();
@@ -17,8 +18,12 @@ if (!ADMIN_PASSWORD) {
     console.warn('WARNING: ADMIN_PASSWORD environment variable not set. Admin access will not work.');
 }
 
-// Session setup
+// Session setup with SQLite store for production
 app.use(session({
+    store: new SQLiteStore({
+        db: 'sessions.db',
+        dir: './'
+    }),
     secret: process.env.SESSION_SECRET || 'baolive-secret-change-in-production',
     resave: false,
     saveUninitialized: false,

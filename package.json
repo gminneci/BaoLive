@@ -7,13 +7,18 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": ["camping", "school", "organizer"],
+  "keywords": [
+    "camping",
+    "school",
+    "organizer"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "sqlite3": "^5.1.6",
+    "connect-sqlite3": "^0.9.16",
     "cors": "^2.8.5",
-    "express-session": "^1.17.3"
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "sqlite3": "^5.1.6"
   }
 }
