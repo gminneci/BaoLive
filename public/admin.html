@@ -20,7 +20,26 @@
             <a href="index.html" class="btn btn-info btn-small">← Back to Home</a>
         </nav>
 
-        <!-- Family Registrations -->
+            <!-- Tabs -->
+            <div class="card">
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--light-cream);">
+                    <button class="tab-button active" onclick="switchTab('families')" id="tab-families">
+                        👨‍👩‍👧‍👦 Families
+                    </button>
+                    <button class="tab-button" onclick="switchTab('activities')" id="tab-activities">
+                        🎯 Activities
+                    </button>
+                    <button class="tab-button" onclick="switchTab('signups')" id="tab-signups">
+                        📝 Sign-ups
+                    </button>
+                    <button class="tab-button" onclick="switchTab('payments')" id="tab-payments">
+                        💰 Payments
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: Family Registrations -->
+            <div class="tab-content" id="content-families">
         <div class="card">
             <div class="flex-between mb-20">
                 <h2 style="color: var(--forest-green);">Family Registrations</h2>
@@ -33,8 +52,10 @@
                 <div class="spinner"></div>
             </div>
         </div>
+            </div>
 
-        <!-- Manage Activities -->
+            <!-- Tab: Manage Activities -->
+            <div class="tab-content" id="content-activities" style="display: none;">
         <div class="card">
             <div class="flex-between mb-20">
                 <h2 style="color: var(--leaf-green); margin: 0;">Manage Activities</h2>
@@ -50,8 +71,10 @@
                 <div class="spinner"></div>
             </div>
         </div>
+            </div>
 
-        <!-- Activity Sign-ups -->
+            <!-- Tab: Activity Sign-ups -->
+            <div class="tab-content" id="content-signups" style="display: none;">
         <div class="card">
             <div class="flex-between mb-20">
                 <h2 style="color: var(--sunset-orange);">Activity Sign-ups</h2>
@@ -65,6 +88,21 @@
             </div>
         </div>
     </div>
+
+            <!-- Tab: Payments -->
+            <div class="tab-content" id="content-payments" style="display: none;">
+                <div class="card">
+                    <div class="flex-between mb-20">
+                        <h2 style="color: var(--forest-green);">Transactions</h2>
+                    </div>
+                    <p style="color: var(--earth-brown); margin-bottom: 20px;">
+                        All payments are tracked at family level.
+                    </p>
+                    <div id="payments-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
 
     <!-- Add Activity Modal -->
     <div id="add-modal"
@@ -224,11 +262,45 @@
         </div>
     </div>
 
+    <!-- Edit Payment Modal -->
+    <div id="edit-payment-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+        <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Payment</h2>
+
+            <form id="edit-payment-form">
+                <input type="hidden" id="edit-payment-id">
+
+                <div class="form-group">
+                    <label>Payment Date *</label>
+                    <input type="date" id="edit-payment-date" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Amount (£) *</label>
+                    <input type="number" id="edit-payment-amount" step="0.01" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="edit-payment-notes" rows="3" placeholder="Optional notes about this payment"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                    <button type="button" class="btn btn-warning" style="flex: 1;"
+                        onclick="closeEditPaymentModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="common.js"></script>
     <script>
         let families = [];
         let activitySignups = [];
         let allActivities = [];
+        let payments = [];
         
         // Sorting state
         let sortState = {
@@ -237,51 +309,196 @@
             signups: { column: null, ascending: true }
         };
 
+        // Tab switching
+        function switchTab(tab) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById(`content-${tab}`).style.display = 'block';
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
+
         window.addEventListener('DOMContentLoaded', async () => {
             await loadFamilies();
             await loadActivitySignups();
             await loadAllActivities();
+            await loadPayments();
         });
 
         async function loadFamilies() {
             try {
-                console.log('Loading families from:', `${API_URL}/families`);
-                const response = await fetch(`${API_URL}/families`);
-                console.log('Families response status:', response.status);
-                if (response.ok) {
-                    families = await response.json();
-                    console.log('Families loaded:', families.length);
-                    renderFamilies();
-                } else {
-                    console.error('Families response not ok:', response.status);
-                    document.getElementById('families-container').innerHTML =
-                        '<p class="alert alert-error">Error loading families</p>';
-                }
+                families = await fetchJSON(`${API_URL}/families`);
+                renderFamilies();
             } catch (error) {
-                console.error('Error loading families:', error);
-                document.getElementById('families-container').innerHTML =
-                    '<p class="alert alert-error">Error loading families: ' + error.message + '</p>';
+                document.getElementById('families-container').innerHTML = '<p class="alert alert-error">Error loading families</p>';
             }
         }
 
         async function loadAllActivities() {
             try {
-                console.log('Loading activities from:', `${API_URL}/activities/all`);
-                const response = await fetch(`${API_URL}/activities/all`);
-                console.log('Activities response status:', response.status);
+                allActivities = await fetchJSON(`${API_URL}/activities/all`);
+                renderAllActivities();
+            } catch (error) {
+                document.getElementById('manage-activities-container').innerHTML = '<p class="alert alert-error">Error loading activities</p>';
+            }
+        }
+
+        async function loadPayments() {
+            try {
+                payments = await fetchJSON(`${API_URL}/payments`);
+                renderPayments();
+            } catch (error) {
+                document.getElementById('payments-container').innerHTML = '<p class="alert alert-error">Error loading payments</p>';
+            }
+        }
+
+        function renderPayments() {
+            const container = document.getElementById('payments-container');
+            
+            if (payments.length === 0) {
+                container.innerHTML = '<p>No payment transactions yet.</p>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Booking Ref</th>
+                                <th>Amount</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${payments.map(payment => {
+                                console.log('Payment:', payment.id, 'cancelled:', payment.cancelled, 'type:', typeof payment.cancelled);
+                                const isCancelled = payment.cancelled == 1 || payment.cancelled === true;
+                                return `
+                                <tr style="${isCancelled ? 'opacity: 0.5;' : ''}">
+                                    <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}">${new Date(payment.payment_date).toLocaleDateString()}</td>
+                                    <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}"><strong>${payment.booking_ref}</strong></td>
+                                    <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}">£${payment.amount.toFixed(2)}${isCancelled ? ' <span style="color: var(--sunset-orange); font-weight: bold; text-decoration: none;">(VOIDED)</span>' : ''}</td>
+                                    <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}">${payment.notes || '-'}</td>
+                                    <td>
+                                        <div style="display: flex; gap: 5px;">
+                                            ${!isCancelled ? `
+                                                <button class="btn btn-info btn-small" onclick="editPayment(${payment.id}, '${payment.payment_date}', ${payment.amount}, '${(payment.notes || '').replace(/'/g, "\\'")}')">Edit</button>
+                                                <button class="btn btn-warning btn-small" onclick="voidPayment(${payment.id})">Void</button>
+                                            ` : `
+                                                <button class="btn btn-primary btn-small" onclick="reinstatePayment(${payment.id})">Reinstate</button>
+                                            `}
+                                        </div>
+                                    </td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <p style="margin-top: 20px; color: var(--earth-brown);">
+                    <strong>Total Payments (Active):</strong> £${payments.filter(p => !p.cancelled).reduce((sum, p) => sum + p.amount, 0).toFixed(2)}
+                    <span style="margin-left: 20px; color: #999;">
+                        <strong>Voided:</strong> £${payments.filter(p => p.cancelled).reduce((sum, p) => sum + p.amount, 0).toFixed(2)}
+                    </span>
+                </p>
+            `;
+        }
+
+        function editPayment(id, date, amount, notes) {
+            document.getElementById('edit-payment-id').value = id;
+            // Format date for HTML date input (YYYY-MM-DD)
+            const dateObj = new Date(date);
+            const formattedDate = dateObj.toISOString().split('T')[0];
+            document.getElementById('edit-payment-date').value = formattedDate;
+            document.getElementById('edit-payment-amount').value = amount;
+            document.getElementById('edit-payment-notes').value = notes === '-' ? '' : notes;
+            document.getElementById('edit-payment-modal').style.display = 'flex';
+        }
+
+        function closeEditPaymentModal() {
+            document.getElementById('edit-payment-modal').style.display = 'none';
+            document.getElementById('edit-payment-form').reset();
+        }
+
+        async function voidPayment(id) {
+            if (!confirm('Are you sure you want to VOID this payment?\n\nThis will mark the payment as cancelled and exclude it from balance calculations, but keep it in the audit trail.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/payments/${id}/void`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
                 if (response.ok) {
-                    allActivities = await response.json();
-                    console.log('Activities loaded:', allActivities.length);
-                    renderAllActivities();
+                    showAlert('Payment voided successfully', 'success');
+                    // Force reload all data
+                    await Promise.all([
+                        loadPayments(),
+                        loadFamilies(),
+                        loadActivitySignups()
+                    ]);
+                    // Re-render signups with updated family data
+                    renderActivitySignups();
                 } else {
-                    console.error('Activities response not ok:', response.status);
-                    document.getElementById('manage-activities-container').innerHTML =
-                        '<p class="alert alert-error">Error loading activities</p>';
+                    showAlert('Error voiding payment', 'error');
                 }
             } catch (error) {
-                console.error('Error loading activities:', error);
-                document.getElementById('manage-activities-container').innerHTML =
-                    '<p class="alert alert-error">Error loading activities: ' + error.message + '</p>';
+                console.error('Error voiding payment:', error);
+                showAlert('Error voiding payment', 'error');
+            }
+        }
+
+        async function reinstatePayment(id) {
+            if (!confirm('Reinstate this payment?\n\nThis will restore the payment and include it in balance calculations.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/payments/${id}/reinstate`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    showAlert('Payment reinstated successfully', 'success');
+                    // Force reload all data
+                    await Promise.all([
+                        loadPayments(),
+                        loadFamilies(),
+                        loadActivitySignups()
+                    ]);
+                    // Re-render signups with updated family data
+                    renderActivitySignups();
+                } else {
+                    showAlert('Error reinstating payment', 'error');
+                }
+            } catch (error) {
+                console.error('Error reinstating payment:', error);
+                showAlert('Error reinstating payment', 'error');
+            }
+        }
+
+        async function updatePayment(id, date, amount, notes) {
+            try {
+                const response = await fetch(`${API_URL}/payments/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payment_date: date, amount, notes })
+                });
+                
+                if (response.ok) {
+                    showAlert('Transaction updated successfully', 'success');
+                    await loadPayments();
+                    await loadFamilies(); // Refresh family balances
+                } else {
+                    showAlert('Error updating transaction', 'error');
+                }
+            } catch (error) {
+                showAlert('Error updating transaction', 'error');
             }
         }
 
@@ -359,7 +576,6 @@
                                 <th onclick="sortActivities('cost')" style="cursor: pointer;">Cost${getSortIndicator('cost')}</th>
                                 <th onclick="sortActivities('capacity')" style="cursor: pointer;">Capacity${getSortIndicator('capacity')}</th>
                                 <th onclick="sortActivities('status')" style="cursor: pointer;">Status${getSortIndicator('status')}</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -371,7 +587,15 @@
                                 
                                 return `
                                 <tr>
-                                    <td><strong>${activity.name}</strong></td>
+                                    <td>
+                                        <a href="#" 
+                                           onclick="editActivity(${activity.id}); return false;" 
+                                           style="color: var(--forest-green); text-decoration: none; font-weight: bold; cursor: pointer;"
+                                           onmouseover="this.style.textDecoration='underline'"
+                                           onmouseout="this.style.textDecoration='none'">
+                                            ${activity.name}
+                                        </a>
+                                    </td>
                                     <td>${activity.session_time}</td>
                                     <td>£${activity.cost.toFixed(2)}</td>
                                     <td>
@@ -383,36 +607,11 @@
                                         ` : '<span style="color: var(--earth-brown);">Unlimited</span>'}
                                     </td>
                                     <td>
-                                        <span class="paid-badge ${activity.available ? 'yes' : 'no'}">
-                                            ${activity.available ? 'Available' : 'Unavailable'}
+                                        <span class="paid-badge ${activity.available ? 'yes' : 'no'}" 
+                                              style="cursor: pointer;"
+                                              onclick="toggleActivityAvailability(${activity.id}, ${!activity.available})">
+                                            ${activity.available ? '✔ Available' : '❌ Unavailable'}
                                         </span>
-                                    </td>
-                                    <td>
-                                        <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
-                                            <button 
-                                                class="btn btn-info btn-small" 
-                                                onclick="editActivity(${activity.id})"
-                                            >
-                                                Edit
-                                            </button>
-                                            ${activity.available ? `
-                                                <button 
-                                                    class="btn btn-warning btn-small" 
-                                                    onclick="toggleActivityAvailability(${activity.id}, false)"
-                                                    style="white-space: nowrap;"
-                                                >
-                                                    Hide
-                                                </button>
-                                            ` : `
-                                                <button 
-                                                    class="btn btn-primary btn-small" 
-                                                    onclick="toggleActivityAvailability(${activity.id}, true)"
-                                                    style="white-space: nowrap;"
-                                                >
-                                                    Show
-                                                </button>
-                                            `}
-                                        </div>
                                     </td>
                                 </tr>
                             `}).join('')}
@@ -472,6 +671,19 @@
             document.getElementById('add-activity-form').reset();
         }
 
+        // Handle edit payment form submission
+        document.getElementById('edit-payment-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const paymentId = document.getElementById('edit-payment-id').value;
+            const date = document.getElementById('edit-payment-date').value;
+            const amount = parseFloat(document.getElementById('edit-payment-amount').value);
+            const notes = document.getElementById('edit-payment-notes').value;
+
+            await updatePayment(paymentId, date, amount, notes);
+            closeEditPaymentModal();
+        });
+
         // Handle edit form submission
         document.getElementById('edit-activity-form').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -513,22 +725,10 @@
 
         async function loadActivitySignups() {
             try {
-                console.log('Loading signups from:', `${API_URL}/activity-signups`);
-                const response = await fetch(`${API_URL}/activity-signups`);
-                console.log('Signups response status:', response.status);
-                if (response.ok) {
-                    activitySignups = await response.json();
-                    console.log('Signups loaded:', activitySignups.length);
-                    renderActivitySignups();
-                } else {
-                    console.error('Signups response not ok:', response.status);
-                    document.getElementById('activities-container').innerHTML =
-                        '<p class="alert alert-error">Error loading activity signups</p>';
-                }
+                activitySignups = await fetchJSON(`${API_URL}/activity-signups`);
+                renderActivitySignups();
             } catch (error) {
-                console.error('Error loading activity signups:', error);
-                document.getElementById('activities-container').innerHTML =
-                    '<p class="alert alert-error">Error loading activity signups: ' + error.message + '</p>';
+                document.getElementById('activities-container').innerHTML = '<p class="alert alert-error">Error loading activity signups</p>';
             }
         }
 
@@ -577,6 +777,10 @@
                             aVal = a.members.filter(m => m.is_child && m.in_sefton_park).length;
                             bVal = b.members.filter(m => m.is_child && m.in_sefton_park).length;
                             break;
+                        case 'payment':
+                            aVal = a.outstanding || 0;
+                            bVal = b.outstanding || 0;
+                            break;
                     }
                     
                     if (aVal < bVal) return sortState.families.ascending ? -1 : 1;
@@ -602,7 +806,8 @@
                 <th onclick="sortFamilies('camping')" style="cursor: pointer;">Camping Type${getSortIndicator('camping')}</th>
                 <th onclick="sortFamilies('nights')" style="cursor: pointer;">Nights${getSortIndicator('nights')}</th>
                 <th onclick="sortFamilies('students')" style="cursor: pointer;">Sefton Park Students${getSortIndicator('students')}</th>
-                <th>Actions</th>
+                <th onclick="sortFamilies('payment')" style="cursor: pointer;">Payment Status${getSortIndicator('payment')}</th>
+                <th>Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -613,7 +818,14 @@
 
                 return `
                   <tr>
-                    <td><strong>${family.booking_ref}</strong></td>
+                    <td>
+                      <a href="/access.html?booking_ref=${encodeURIComponent(family.booking_ref)}" 
+                         style="color: var(--forest-green); text-decoration: none; font-weight: bold; cursor: pointer;"
+                         onmouseover="this.style.textDecoration='underline'"
+                         onmouseout="this.style.textDecoration='none'">
+                        ${family.booking_ref}
+                      </a>
+                    </td>
                     <td>
                       ${children.length > 0 ? `<strong>Children:</strong> ${children.map(c => c.name).join(', ')}<br>` : ''}
                       ${adults.length > 0 ? `<strong>Adults:</strong> ${adults.map(a => a.name).join(', ')}` : ''}
@@ -622,27 +834,53 @@
                     <td>${family.nights.join(', ')}</td>
                     <td>
                                             ${seftonChildren.map(c => {
+                                        // If class is specified (Year 3), show only class name
+                                        if (c.class) {
+                                            return `${c.name} (${c.class})`;
+                                        }
+                                        // Otherwise show year
                                         const yearLabel = c.year === 'Reception' ? 'Reception' : `Year ${c.year || '?'}`;
-                                        return `${c.name} (${yearLabel}, ${c.class || 'N/A'})`;
+                                        return `${c.name} (${yearLabel})`;
                                 }).join('<br>') || 'None'}
                     </td>
                     <td>
-                      <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
-                        <button 
-                          class="btn btn-info btn-small" 
-                          onclick="editFamily('${family.access_key}')"
-                          style="white-space: nowrap;"
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          class="btn btn-warning btn-small" 
-                          onclick="deleteFamily('${family.access_key}', '${family.booking_ref}')"
-                          style="white-space: nowrap;"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      ${(() => {
+                        const outstanding = family.outstanding || 0;
+                        const owed = family.total_owed || 0;
+                        const paid = family.total_paid || 0;
+                        let color, status;
+                        
+                        if (outstanding > 0) {
+                          color = 'var(--sunset-orange)';
+                          status = 'Not Paid';
+                        } else if (outstanding < 0) {
+                          color = '#4169E1';
+                          status = 'Overpaid';
+                        } else {
+                          color = 'var(--bright-green)';
+                          status = 'Paid ✓';
+                        }
+                        
+                        return `
+                          <div style="color: ${color}; font-weight: bold;">
+                            ${status}<br>
+                            <small style="color: var(--earth-brown); font-weight: normal;">
+                              Owed: £${owed.toFixed(2)}<br>
+                              Paid: £${paid.toFixed(2)}<br>
+                              ${outstanding !== 0 ? `Balance: £${outstanding.toFixed(2)}` : ''}
+                            </small>
+                          </div>
+                        `;
+                      })()}
+                    </td>
+                    <td>
+                      <button 
+                        class="btn btn-warning btn-small" 
+                        onclick="deleteFamily('${family.access_key}', '${family.booking_ref}')"
+                        style="white-space: nowrap;"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 `;
@@ -702,10 +940,6 @@
                             aVal = a.cost * a.children.length;
                             bVal = b.cost * b.children.length;
                             break;
-                        case 'payment':
-                            aVal = a.paid ? 1 : 0;
-                            bVal = b.paid ? 1 : 0;
-                            break;
                     }
                     
                     if (aVal < bVal) return sortState.signups.ascending ? -1 : 1;
@@ -721,6 +955,9 @@
                 return '';
             };
 
+            // Get family payment info for each signup
+            const familyMap = new Map(families.map(f => [f.booking_ref, f]));
+
             container.innerHTML = `
         <div style="overflow-x: auto;">
           <table>
@@ -731,13 +968,27 @@
                 <th onclick="sortSignups('booking')" style="cursor: pointer;">Booking Ref${getSortIndicator('booking')}</th>
                 <th onclick="sortSignups('children')" style="cursor: pointer;">Children${getSortIndicator('children')}</th>
                 <th onclick="sortSignups('cost')" style="cursor: pointer;">Cost${getSortIndicator('cost')}</th>
-                <th onclick="sortSignups('payment')" style="cursor: pointer;">Payment Status${getSortIndicator('payment')}</th>
-                <th>Actions</th>
+                <th>Family Payment Status</th>
               </tr>
             </thead>
             <tbody>
               ${sortedSignups.map(signup => {
                 const totalCost = signup.cost * signup.children.length;
+                const family = familyMap.get(signup.booking_ref);
+                const outstanding = family?.outstanding || 0;
+                
+                let statusColor, statusText;
+                if (outstanding > 0) {
+                  statusColor = 'var(--sunset-orange)';
+                  statusText = `Not Paid (£${outstanding.toFixed(2)} owed)`;
+                } else if (outstanding < 0) {
+                  statusColor = '#4169E1';
+                  statusText = `Overpaid (£${Math.abs(outstanding).toFixed(2)} credit)`;
+                } else {
+                  statusColor = 'var(--bright-green)';
+                  statusText = 'Paid ✓';
+                }
+                
                 return `
                   <tr>
                     <td><strong>${signup.activity_name}</strong></td>
@@ -745,27 +996,8 @@
                     <td>${signup.booking_ref}</td>
                     <td>${signup.children.join(', ')}</td>
                     <td>£${totalCost.toFixed(2)}</td>
-                    <td>
-                      <span class="paid-badge ${signup.paid ? 'yes' : 'no'}">
-                        ${signup.paid ? 'Paid ✓' : 'Not Paid'}
-                      </span>
-                    </td>
-                    <td>
-                      ${!signup.paid ? `
-                        <button 
-                          class="btn btn-primary btn-small" 
-                          onclick="markAsPaid(${signup.id}, ${totalCost})"
-                        >
-                          Mark Paid
-                        </button>
-                      ` : `
-                        <button 
-                          class="btn btn-warning btn-small" 
-                          onclick="markAsUnpaid(${signup.id})"
-                        >
-                          Mark Unpaid
-                        </button>
-                      `}
+                    <td style="color: ${statusColor}; font-weight: bold;">
+                      ${statusText}
                     </td>
                   </tr>
                 `;
@@ -775,55 +1007,12 @@
         </div>
         <p style="margin-top: 20px; color: var(--earth-brown);">
           <strong>Total Sign-ups:</strong> ${activitySignups.length} | 
-          <strong>Total:</strong> £${activitySignups.reduce((sum, s) => sum + (s.cost * s.children.length), 0).toFixed(2)} | 
-          <strong>Paid:</strong> £${activitySignups.filter(s => s.paid).reduce((sum, s) => sum + s.amount_paid, 0).toFixed(2)}
+          <strong>Total Cost:</strong> £${activitySignups.reduce((sum, s) => sum + (s.cost * s.children.length), 0).toFixed(2)}
         </p>
       `;
         }
 
-        async function markAsPaid(signupId, amount) {
-            try {
-                const response = await fetch(`${API_URL}/activity-signups/${signupId}/payment`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        paid: true,
-                        amount_paid: amount
-                    })
-                });
 
-                if (response.ok) {
-                    await loadActivitySignups();
-                }
-            } catch (error) {
-                console.error('Error updating payment:', error);
-                alert('Error updating payment status');
-            }
-        }
-
-        async function markAsUnpaid(signupId) {
-            try {
-                const response = await fetch(`${API_URL}/activity-signups/${signupId}/payment`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        paid: false,
-                        amount_paid: 0
-                    })
-                });
-
-                if (response.ok) {
-                    await loadActivitySignups();
-                }
-            } catch (error) {
-                console.error('Error updating payment:', error);
-                alert('Error updating payment status');
-            }
-        }
 
         async function exportFamilies() {
             try {

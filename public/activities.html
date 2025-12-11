@@ -34,9 +34,6 @@
             <div id="activities-container" class="hidden">
                 <h3 style="color: var(--forest-green); margin-bottom: 20px;">Available Activities</h3>
                 <div id="activities-list"></div>
-                <button class="btn btn-primary btn-block mt-20" onclick="saveAllActivities()" style="margin-top: 30px;">
-                    💾 Update All Activities
-                </button>
             </div>
 
             <div id="my-signups" class="hidden">
@@ -47,9 +44,10 @@
         </div>
 
         <div class="card text-center" id="save-close-section" class="hidden">
-            <button class="btn btn-primary btn-block" onclick="saveAllAndClose()">
-                💾 Save and Close
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="applyChanges()">💾 Apply Changes</button>
+                <button class="btn btn-secondary" style="flex: 1;" onclick="exitToHome()">🏠 Exit</button>
+            </div>
         </div>
     </div>
 
@@ -101,27 +99,22 @@
 
         async function loadFamilyData() {
             try {
-                const response = await fetch(`${API_URL}/families/access/${accessKey}`);
-                if (response.ok) {
-                    familyData = await response.json();
+                familyData = await fetchJSON(`${API_URL}/families/access/${accessKey}`);
                     document.getElementById('activities-container').classList.remove('hidden');
                     document.getElementById('my-signups').classList.remove('hidden');
-                } else {
-                    document.getElementById('login-prompt').classList.remove('hidden');
-                }
+                
             } catch (error) {
                 console.error('Error loading family data:', error);
                 showAlert('Error loading family data', 'error');
+                document.getElementById('login-prompt').classList.remove('hidden');
             }
         }
 
         async function loadActivities() {
             try {
-                const response = await fetch(`${API_URL}/activities`);
-                if (response.ok) {
-                    activities = await response.json();
-                    // Don't render yet - wait for signups to load first
-                }
+                // Pass access_key so we see activities we're signed up for, even if full
+                activities = await fetchJSON(`${API_URL}/activities?access_key=${accessKey}`);
+                // Don't render yet - wait for signups to load first
             } catch (error) {
                 console.error('Error loading activities:', error);
                 showAlert('Error loading activities', 'error');
@@ -130,13 +123,10 @@
 
         async function loadMySignups() {
             try {
-                const response = await fetch(`${API_URL}/activity-signups/family/${accessKey}`);
-                if (response.ok) {
-                    mySignups = await response.json();
-                    // Now render activities with pre-selected checkboxes
-                    renderActivities();
-                    renderMySignups();
-                }
+                mySignups = await fetchJSON(`${API_URL}/activity-signups/family/${accessKey}`);
+                // Now render activities with pre-selected checkboxes
+                renderActivities();
+                renderMySignups();
             } catch (error) {
                 console.error('Error loading signups:', error);
             }
@@ -185,6 +175,47 @@
           </div>
         `;
             }).join('');
+
+            // Attach real-time save handlers to checkboxes (per activity)
+            const checkboxes = document.querySelectorAll('.activity-child-checkbox');
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const activityId = parseInt(cb.dataset.activityId, 10);
+                    saveActivitySelection(activityId);
+                });
+            });
+        }
+
+        // Save selection for a single activity
+        async function saveActivitySelection(activityId) {
+            try {
+                const selected = Array.from(document.querySelectorAll(`.activity-child-checkbox[data-activity-id="${activityId}"]:checked`))
+                    .map(cb => cb.dataset.childName);
+
+                const response = await fetch(`${API_URL}/activity-signups`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        activity_id: activityId,
+                        access_key: accessKey,
+                        children: selected
+                    })
+                });
+
+                if (!response.ok) {
+                    showAlert('Error saving activity selection', 'error');
+                    return;
+                }
+
+                // Refresh data and re-render totals and signups
+                await loadMySignups();
+                await loadFamilyData();
+                renderActivities();
+                renderMySignups();
+            } catch (error) {
+                console.error('Error saving activity selection:', error);
+                showAlert('Error saving activity selection', 'error');
+            }
         }
 
         function renderMySignups() {
@@ -192,23 +223,14 @@
 
             if (mySignups.length === 0) {
                 container.innerHTML = '<p style="color: var(--earth-brown);">No activities signed up yet.</p><div id="payment-status-section"></div>';
+                // Ensure payment section renders even with zero signups (uses familyData totals)
+                renderPaymentSection();
                 return;
             }
 
             // Display current signups
             const signupsList = mySignups.filter(s => s.children.length > 0).map(signup => {
               const activityTotal = signup.cost * signup.children.length;
-              const paidAmount = signup.paid ? signup.amount_paid : 0;
-              let paymentColor = 'var(--sunset-orange)'; // red/unpaid
-              let paymentStatus = 'Unpaid';
-              
-              if (paidAmount >= activityTotal && activityTotal > 0) {
-                paymentColor = 'var(--bright-green)'; // green/fully paid
-                paymentStatus = 'Paid ✓';
-              } else if (paidAmount > 0 && paidAmount < activityTotal) {
-                paymentColor = '#FFA500'; // yellow/partially paid
-                paymentStatus = 'Partially Paid';
-              }
               
               return `
             <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid white;">
@@ -220,8 +242,6 @@
               ${signup.cost > 0 ? `
                 <br>
                 <strong>Cost:</strong> £${signup.cost.toFixed(2)} × ${signup.children.length} = £${activityTotal.toFixed(2)}
-                <br>
-                <span style="color: ${paymentColor}; font-weight: bold;">${paymentStatus}${paidAmount > 0 ? ` (£${paidAmount.toFixed(2)})` : ''}</span>
               ` : ''}
             </div>
           `;
@@ -240,12 +260,12 @@
 
         function renderPaymentSection() {
             const paymentSection = document.getElementById('payment-status-section');
-            if (!paymentSection) return;
+            if (!paymentSection || !familyData) return;
 
-            // Calculate totals based on saved signups (not checkbox state)
-            const totalDue = mySignups.reduce((sum, signup) => sum + (signup.cost * signup.children.length), 0);
-            const totalPaid = mySignups.filter(s => s.paid).reduce((sum, signup) => sum + signup.amount_paid, 0);
-            const unpaid = totalDue - totalPaid;
+            // Use family-level payment data from the API
+            const totalDue = familyData.total_owed || 0;
+            const totalPaid = familyData.total_paid || 0;
+            const unpaid = familyData.outstanding || 0;
 
             // Show payment section if there's anything due OR if they've paid anything (even if now cancelled)
             if (totalDue > 0 || totalPaid > 0) {
@@ -342,54 +362,58 @@
         }
         
         async function confirmPayment() {
-            // Process payment for all unpaid signups
+            // Calculate total amount to pay
             const unpaidSignups = mySignups.filter(s => {
                 const total = s.cost * s.children.length;
                 const paid = s.paid ? s.amount_paid : 0;
                 return total > paid;
             });
             
-            let allSuccess = true;
-            
-            for (const signup of unpaidSignups) {
+            const totalAmount = unpaidSignups.reduce((sum, signup) => {
                 const total = signup.cost * signup.children.length;
                 const alreadyPaid = signup.paid ? signup.amount_paid : 0;
-                const amountToPay = total - alreadyPaid;
-                
-                try {
-                    const response = await fetch(`${API_URL}/activity-signups/${signup.id}/payment`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            paid: true,
-                            amount_paid: total // Mark as fully paid
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        allSuccess = false;
-                        break;
-                    }
-                } catch (error) {
-                    console.error('Error processing payment:', error);
-                    allSuccess = false;
-                    break;
-                }
+                return sum + (total - alreadyPaid);
+            }, 0);
+            
+            if (totalAmount <= 0) {
+                closePaymentModal();
+                showAlert('Nothing to pay!', 'info');
+                return;
             }
             
-            closePaymentModal();
-            
-            if (allSuccess) {
-                showAlert('Payment successful! ✓ Your activities are now marked as paid.', 'success');
-                await loadMySignups();
-            } else {
+            try {
+                const response = await fetch(`${API_URL}/payments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        access_key: accessKey,
+                        amount: totalAmount,
+                        notes: 'Test payment for camping activities'
+                    })
+                });
+                
+                closePaymentModal();
+                
+                if (response.ok) {
+                    showAlert(`Payment successful! ✓ £${totalAmount.toFixed(2)} has been recorded.`, 'success');
+                    await loadMySignups();
+                    await loadFamilyData(); // Refresh family data to show updated balance
+                    renderMySignups(); // Re-render to show updated payment status
+                } else {
+                    const errorData = await response.json();
+                    showAlert(`Error processing payment: ${errorData.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                closePaymentModal();
+                console.error('Error processing payment:', error);
                 showAlert('Error processing payment. Please try again.', 'error');
             }
         }
 
-        async function saveAllActivities() {
+        // Removed: superseded by real-time saves and applyChanges
+        /* async function saveAllActivities() {
             const activitiesToSave = [];
             
             // Collect all activities with their selected children
@@ -441,61 +465,19 @@
             } else {
                 showAlert('Error updating some activities. Please try again.', 'error');
             }
+        } */
+
+        async function applyChanges() {
+            // Bulk re-save by delegating to per-activity saver for each activity id
+            const ids = activities.map(a => a.id);
+            for (const id of ids) {
+                await saveActivitySelection(id);
+            }
+            showAlert('All activities updated successfully! 🎉', 'success');
         }
 
-        async function saveAllAndClose() {
-            const activitiesToSave = [];
-            
-            // Collect all activities with their selected children
-            activities.forEach(activity => {
-                const checkboxes = document.querySelectorAll(`input[data-activity-id="${activity.id}"]:checked`);
-                const selectedChildren = Array.from(checkboxes).map(cb => cb.dataset.childName);
-                
-                // Include all activities, even with 0 children (to clear them if previously selected)
-                activitiesToSave.push({
-                    activity_id: activity.id,
-                    children: selectedChildren
-                });
-            });
-
-            // Save all activities
-            let allSuccess = true;
-            for (const activityData of activitiesToSave) {
-                try {
-                    const response = await fetch(`${API_URL}/activity-signups`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            activity_id: activityData.activity_id,
-                            access_key: accessKey,
-                            children: activityData.children
-                        })
-                    });
-
-                    if (!response.ok) {
-                        allSuccess = false;
-                        break;
-                    }
-                } catch (error) {
-                    console.error('Error saving activity:', error);
-                    allSuccess = false;
-                    break;
-                }
-            }
-
-            if (allSuccess) {
-                showAlert('All activities saved successfully! ✓ You can now close this page.', 'success');
-                await loadMySignups();
-                renderActivities();
-                // Wait for DOM to update before calculating totals
-                setTimeout(() => {
-                    renderMySignups();
-                }, 0);
-            } else {
-                showAlert('Error saving some activities. Please try again.', 'error');
-            }
+        function exitToHome() {
+            window.location.href = 'index.html';
         }
     </script>
 </body>

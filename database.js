@@ -60,13 +60,77 @@ function initDatabase() {
         activity_id INTEGER NOT NULL,
         family_id INTEGER NOT NULL,
         children TEXT NOT NULL,
-        paid INTEGER DEFAULT 0,
-        amount_paid REAL DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
         FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE
       )
     `);
+
+      // Payments table - tracks all payments at family level
+      db.run(`
+        CREATE TABLE IF NOT EXISTS payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          family_id INTEGER NOT NULL,
+          amount REAL NOT NULL,
+          payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+          notes TEXT,
+          cancelled INTEGER DEFAULT 0,
+          FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Migration: Remove old payment columns from activity_signups if they exist
+      db.get("PRAGMA table_info(activity_signups)", (err, info) => {
+        if (!err && info) {
+          // Check if old payment columns exist
+          db.all("PRAGMA table_info(activity_signups)", (err, columns) => {
+            const hasPaidColumn = columns && columns.some(col => col.name === 'paid');
+            
+            if (hasPaidColumn) {
+              console.log('Migrating activity_signups table to remove payment columns...');
+              
+              // Create new table without payment columns
+              db.run(`
+                CREATE TABLE activity_signups_new (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  activity_id INTEGER NOT NULL,
+                  family_id INTEGER NOT NULL,
+                  children TEXT NOT NULL,
+                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
+                  FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE
+                )
+              `, (createErr) => {
+                if (!createErr) {
+                  // Copy data without payment columns
+                  db.run(`INSERT INTO activity_signups_new (id, activity_id, family_id, children, created_at)
+                          SELECT id, activity_id, family_id, children, created_at FROM activity_signups`, (copyErr) => {
+                    if (!copyErr) {
+                      db.run(`DROP TABLE activity_signups`, (dropErr) => {
+                        if (!dropErr) {
+                          db.run(`ALTER TABLE activity_signups_new RENAME TO activity_signups`, (renameErr) => {
+                            if (!renameErr) {
+                              console.log('Migration completed: payment columns removed from activity_signups');
+                            }
+                          });
+                        }
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
+        }
+      });
+
+      // Add cancelled column to payments if it doesn't exist
+      db.run(`ALTER TABLE payments ADD COLUMN cancelled INTEGER DEFAULT 0`, (err) => {
+        // Ignore error if column already exists
+        if (!err) {
+          console.log('Migration completed: added cancelled column to payments');
+        }
+      });
 
     // Insert sample activity (only Tobogganing)
     db.run(`

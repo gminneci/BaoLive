@@ -74,7 +74,7 @@
                     </button>
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-block">Save and Choose Activities</button>
+                <button type="submit" class="btn btn-primary btn-block">Confirm and Choose Activities</button>
             </form>
         </div>
     </div>
@@ -106,14 +106,11 @@
 
         async function loadExistingFamily(accessKey) {
             try {
-                const response = await fetch(`${API_URL}/families/access/${accessKey}`);
-                if (response.ok) {
-                    existingFamily = await response.json();
-                    populateForm(existingFamily);
-                    showAlert('Editing existing registration', 'info');
-                }
+                existingFamily = await fetchJSON(`${API_URL}/families/access/${accessKey}`);
+                populateForm(existingFamily);
+                showAlert('Editing existing registration', 'info');
             } catch (error) {
-                console.error('Error loading family:', error);
+                showAlert('Error loading existing registration', 'error');
             }
         }
 
@@ -282,31 +279,38 @@
                 
                 // If it's a new registration, check for duplicate booking ref
                 if (isNewRegistration) {
-                    const checkResponse = await fetch(`${API_URL}/families/check/${bookingRef}`);
-                    const checkData = await checkResponse.json();
-                    
-                    if (checkData.exists) {
+                    try {
+                        const checkData = await fetchJSON(`${API_URL}/families/check/${bookingRef}`);
+                        if (checkData.exists) {
                         showAlert(`Booking reference "${bookingRef}" is already registered. Use "Access My Registration" to edit it instead.`, 'error');
+                        return;
+                        }
+                    } catch (err) {
+                        showAlert('Error checking booking reference', 'error');
                         return;
                     }
                 }
 
-                const response = await fetch(`${API_URL}/families`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        booking_ref: bookingRef,
-                        members,
-                        camping_type: campingType,
-                        nights
-                    })
-                });
+                const postBody = {
+                    booking_ref: bookingRef,
+                    members,
+                    camping_type: campingType,
+                    nights
+                };
 
-                const result = await response.json();
+                let result;
+                try {
+                    result = await fetchJSON(`${API_URL}/families`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(postBody)
+                    });
+                } catch (err) {
+                    showAlert(err.message || 'Error saving registration', 'error');
+                    return;
+                }
 
-                if (response.ok) {
+                if (result && result.access_key) {
                     // Store access key in localStorage
                     localStorage.setItem('accessKey', result.access_key);
 
@@ -317,11 +321,10 @@
                         window.location.href = 'activities.html';
                     }, 1500);
                 } else {
-                    showAlert(result.error || 'Error saving registration', 'error');
+                    showAlert('Error saving registration', 'error');
                 }
             } catch (error) {
                 showAlert('Error saving registration. Please try again.', 'error');
-                console.error('Error:', error);
             }
         });
     </script>

@@ -151,7 +151,55 @@ app.get('/api/families', (req, res) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
-        res.json(rows.map(transformFamilyRow));
+        
+            // Get payment totals for each family
+            const familiesWithPayments = rows.map(transformFamilyRow);
+            let completed = 0;
+        
+            familiesWithPayments.forEach((family, index) => {
+                // Get total owed for this family
+                const owedQuery = `
+                    SELECT COALESCE(SUM(a.cost * json_array_length(acs.children)), 0) as total_owed
+                    FROM activity_signups acs
+                    JOIN activities a ON acs.activity_id = a.id
+                    WHERE acs.family_id = ?
+                `;
+            
+                db.get(owedQuery, [family.id], (owedErr, owedResult) => {
+                    if (!owedErr) {
+                        family.total_owed = owedResult.total_owed || 0;
+                    
+                        // Get total paid for this family (exclude cancelled payments)
+                        const paidQuery = `
+                            SELECT COALESCE(SUM(amount), 0) as total_paid
+                            FROM payments
+                            WHERE family_id = ? AND cancelled = 0
+                        `;
+                    
+                        db.get(paidQuery, [family.id], (paidErr, paidResult) => {
+                            if (!paidErr) {
+                                family.total_paid = paidResult.total_paid || 0;
+                                family.outstanding = family.total_owed - family.total_paid;
+                            }
+                        
+                            completed++;
+                            if (completed === familiesWithPayments.length) {
+                                res.json(familiesWithPayments);
+                            }
+                        });
+                    } else {
+                        completed++;
+                        if (completed === familiesWithPayments.length) {
+                            res.json(familiesWithPayments);
+                        }
+                    }
+                });
+            });
+        
+            // Handle empty array case
+            if (familiesWithPayments.length === 0) {
+                res.json([]);
+            }
     });
 });
 
@@ -169,7 +217,42 @@ app.get('/api/families/access/:accessKey', (req, res) => {
         if (!row) {
             return res.status(404).json({ error: 'Family not found' });
         }
-        res.json(transformFamilyRow(row));
+        
+        const family = transformFamilyRow(row);
+        
+        // Get total owed for this family
+        const owedQuery = `
+            SELECT COALESCE(SUM(a.cost * json_array_length(acs.children)), 0) as total_owed
+            FROM activity_signups acs
+            JOIN activities a ON acs.activity_id = a.id
+            WHERE acs.family_id = ?
+        `;
+        
+        db.get(owedQuery, [family.id], (owedErr, owedResult) => {
+            if (owedErr) {
+                return res.status(500).json({ error: owedErr.message });
+            }
+            
+            family.total_owed = owedResult.total_owed || 0;
+            
+            // Get total paid for this family (exclude cancelled payments)
+            const paidQuery = `
+                SELECT COALESCE(SUM(amount), 0) as total_paid
+                FROM payments
+                WHERE family_id = ? AND cancelled = 0
+            `;
+            
+            db.get(paidQuery, [family.id], (paidErr, paidResult) => {
+                if (paidErr) {
+                    return res.status(500).json({ error: paidErr.message });
+                }
+                
+                family.total_paid = paidResult.total_paid || 0;
+                family.outstanding = family.total_owed - family.total_paid;
+                
+                res.json(family);
+            });
+        });
     });
 });
 
@@ -307,12 +390,33 @@ app.delete('/api/families/:id', (req, res) => {
 
 // Get activities (for parents - only available ones)
 app.get('/api/activities', (req, res) => {
-    db.all('SELECT * FROM activities WHERE available = 1 ORDER BY session_time', [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json(rows);
-    });
+    const { access_key } = req.query;
+    
+    // If access_key provided, show activities that are available OR family is signed up for
+    if (access_key) {
+        const query = `
+            SELECT DISTINCT a.* 
+            FROM activities a
+            LEFT JOIN families f ON f.access_key = ?
+            LEFT JOIN activity_signups s ON s.activity_id = a.id AND s.family_id = f.id
+            WHERE a.available = 1 OR s.id IS NOT NULL
+            ORDER BY a.session_time
+        `;
+        db.all(query, [access_key], (err, rows) => {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json(rows);
+        });
+    } else {
+        // No access_key: only show available activities
+        db.all('SELECT * FROM activities WHERE available = 1 ORDER BY session_time', [], (err, rows) => {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json(rows);
+        });
+    }
 });
 
 // Get all activities including unavailable (admin only)
@@ -476,20 +580,42 @@ app.post('/api/activity-signups', (req, res) => {
                 }
 
                 if (existing) {
-                    // Update existing signup
-                    db.run(
-                        'UPDATE activity_signups SET children = ? WHERE id = ?',
-                        [JSON.stringify(children), existing.id],
-                        function (err) {
-                            if (err) {
-                                return res.status(500).json({ error: err.message });
+                    // If no children selected, delete the signup
+                    if (!children || children.length === 0) {
+                        db.run(
+                            'DELETE FROM activity_signups WHERE id = ?',
+                            [existing.id],
+                            function (err) {
+                                if (err) {
+                                    return res.status(500).json({ error: err.message });
+                                }
+                                // Check capacity and auto-disable if full
+                                checkAndUpdateActivityCapacity(activity_id);
+                                res.json({ success: true, deleted: true });
                             }
-                            // Check capacity and auto-disable if full
-                            checkAndUpdateActivityCapacity(activity_id);
-                            res.json({ success: true, id: existing.id });
-                        }
-                    );
+                        );
+                    } else {
+                        // Update existing signup
+                        db.run(
+                            'UPDATE activity_signups SET children = ? WHERE id = ?',
+                            [JSON.stringify(children), existing.id],
+                            function (err) {
+                                if (err) {
+                                    return res.status(500).json({ error: err.message });
+                                }
+                                // Check capacity and auto-disable if full
+                                checkAndUpdateActivityCapacity(activity_id);
+                                res.json({ success: true, id: existing.id });
+                            }
+                        );
+                    }
                 } else {
+                    // Only create new signup if children are selected
+                    if (!children || children.length === 0) {
+                        // No children selected and no existing signup - nothing to do
+                        return res.json({ success: true, skipped: true });
+                    }
+                    
                     // Create new signup
                     db.run(
                         `INSERT INTO activity_signups (activity_id, family_id, children) VALUES (?, ?, ?)`,
@@ -510,13 +636,128 @@ app.post('/api/activity-signups', (req, res) => {
 });
 
 // Update payment status
-app.put('/api/activity-signups/:id/payment', (req, res) => {
-    const { id } = req.params;
-    const { paid, amount_paid } = req.body;
+// ==================== PAYMENTS ====================
 
+// Get all payments for a family
+app.get('/api/payments/family/:accessKey', (req, res) => {
+    const { accessKey } = req.params;
+    
+    // First get the family_id
+    db.get('SELECT id FROM families WHERE access_key = ?', [accessKey], (err, family) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (!family) {
+            return res.status(404).json({ error: 'Family not found' });
+        }
+        
+        // Get all payments for this family
+        db.all(
+            'SELECT * FROM payments WHERE family_id = ? ORDER BY payment_date DESC',
+            [family.id],
+            (err, payments) => {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json(payments);
+            }
+        );
+    });
+});
+
+// Get all payments (admin)
+app.get('/api/payments', requireAdmin, (req, res) => {
+    const query = `
+        SELECT 
+            p.*,
+            f.booking_ref
+        FROM payments p
+        JOIN families f ON p.family_id = f.id
+        ORDER BY p.payment_date DESC
+    `;
+    
+    db.all(query, [], (err, payments) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(payments);
+    });
+});
+
+// Create a payment
+app.post('/api/payments', (req, res) => {
+    const { access_key, amount, notes } = req.body;
+    
+    if (!access_key || amount === undefined) {
+        return res.status(400).json({ error: 'access_key and amount required' });
+    }
+    
+    // Get family ID from access key
+    db.get('SELECT id FROM families WHERE access_key = ?', [access_key], (err, family) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        if (!family) {
+            return res.status(404).json({ error: 'Family not found' });
+        }
+        
+        db.run(
+            'INSERT INTO payments (family_id, amount, notes) VALUES (?, ?, ?)',
+            [family.id, amount, notes || null],
+            function (err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ success: true, id: this.lastID });
+            }
+        );
+    });
+});
+
+// Delete a payment (admin)
+// Void a payment (admin) - marks as cancelled instead of deleting
+app.post('/api/payments/:id/void', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    
+    db.run('UPDATE payments SET cancelled = 1 WHERE id = ?', [id], function (err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Reinstate a voided payment (admin)
+app.post('/api/payments/:id/reinstate', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    
+    db.run('UPDATE payments SET cancelled = 0 WHERE id = ?', [id], function (err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true });
+    });
+});
+
+app.delete('/api/payments/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    
+    db.run('DELETE FROM payments WHERE id = ?', [id], function (err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true });
+    });
+});
+
+// Update a payment (admin)
+app.put('/api/payments/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    const { payment_date, amount, notes } = req.body;
+    
     db.run(
-        'UPDATE activity_signups SET paid = ?, amount_paid = ? WHERE id = ?',
-        [paid ? 1 : 0, amount_paid || 0, id],
+        'UPDATE payments SET payment_date = ?, amount = ?, notes = ? WHERE id = ?',
+        [payment_date, amount, notes || null, id],
         function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });

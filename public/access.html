@@ -46,6 +46,17 @@
 
     <script src="common.js"></script>
     <script>
+        // Check for booking_ref in URL parameters and auto-fill
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookingRefParam = urlParams.get('booking_ref');
+            if (bookingRefParam) {
+                document.getElementById('booking-ref').value = bookingRefParam;
+                // Auto-submit if booking ref is provided
+                document.getElementById('access-form').dispatchEvent(new Event('submit'));
+            }
+        });
+
         document.getElementById('access-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
