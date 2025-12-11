@@ -74,6 +74,7 @@ function initDatabase() {
           amount REAL NOT NULL,
           payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
           notes TEXT,
+          cancelled INTEGER DEFAULT 0,
           FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE
         )
       `);
@@ -120,6 +121,14 @@ function initDatabase() {
               });
             }
           });
+        }
+      });
+
+      // Add cancelled column to payments if it doesn't exist
+      db.run(`ALTER TABLE payments ADD COLUMN cancelled INTEGER DEFAULT 0`, (err) => {
+        // Ignore error if column already exists
+        if (!err) {
+          console.log('Migration completed: added cancelled column to payments');
         }
       });
 

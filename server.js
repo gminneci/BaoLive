@@ -169,11 +169,11 @@ app.get('/api/families', (req, res) => {
                     if (!owedErr) {
                         family.total_owed = owedResult.total_owed || 0;
                     
-                        // Get total paid for this family
+                        // Get total paid for this family (exclude cancelled payments)
                         const paidQuery = `
                             SELECT COALESCE(SUM(amount), 0) as total_paid
                             FROM payments
-                            WHERE family_id = ?
+                            WHERE family_id = ? AND cancelled = 0
                         `;
                     
                         db.get(paidQuery, [family.id], (paidErr, paidResult) => {
@@ -637,6 +637,18 @@ app.post('/api/payments', (req, res) => {
 });
 
 // Delete a payment (admin)
+// Void a payment (admin) - marks as cancelled instead of deleting
+app.post('/api/payments/:id/void', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    
+    db.run('UPDATE payments SET cancelled = 1 WHERE id = ?', [id], function (err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true });
+    });
+});
+
 app.delete('/api/payments/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     

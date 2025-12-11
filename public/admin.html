@@ -96,7 +96,7 @@
                         <h2 style="color: var(--forest-green);">Transactions</h2>
                     </div>
                     <p style="color: var(--earth-brown); margin-bottom: 20px;">
-                        All payments are tracked at family level. Edit or delete transactions as needed.
+                        All payments are tracked at family level.
                     </p>
                     <div id="payments-container">
                         <div class="spinner"></div>
@@ -291,12 +291,6 @@
                     <button type="button" class="btn btn-warning" style="flex: 1;"
                         onclick="closeEditPaymentModal()">Cancel</button>
                 </div>
-                
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #eee;">
-                    <button type="button" class="btn btn-warning btn-block" onclick="deletePaymentFromModal()">
-                        🗑️ Delete Payment
-                    </button>
-                </div>
             </form>
         </div>
     </div>
@@ -413,22 +407,33 @@
                             </tr>
                         </thead>
                         <tbody>
-                            ${payments.map(payment => `
-                                <tr>
+                            ${payments.map(payment => {
+                                const isCancelled = payment.cancelled === 1;
+                                const rowStyle = isCancelled ? 'opacity: 0.5; text-decoration: line-through; color: #999;' : '';
+                                return `
+                                <tr style="${rowStyle}">
                                     <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
                                     <td><strong>${payment.booking_ref}</strong></td>
-                                    <td>£${payment.amount.toFixed(2)}</td>
+                                    <td>£${payment.amount.toFixed(2)}${isCancelled ? ' <span style="color: var(--sunset-orange); font-weight: bold;">(VOIDED)</span>' : ''}</td>
                                     <td>${payment.notes || '-'}</td>
                                     <td>
-                                        <button class="btn btn-info btn-small" onclick="editPayment(${payment.id}, '${payment.payment_date}', ${payment.amount}, '${(payment.notes || '').replace(/'/g, "\\'")}')">Edit</button>
+                                        <div style="display: flex; gap: 5px;">
+                                            ${!isCancelled ? `
+                                                <button class="btn btn-info btn-small" onclick="editPayment(${payment.id}, '${payment.payment_date}', ${payment.amount}, '${(payment.notes || '').replace(/'/g, "\\'")}')">Edit</button>
+                                                <button class="btn btn-warning btn-small" onclick="voidPayment(${payment.id})">Void</button>
+                                            ` : '<span style="font-style: italic;">Cancelled</span>'}
+                                        </div>
                                     </td>
                                 </tr>
-                            `).join('')}
+                            `}).join('')}
                         </tbody>
                     </table>
                 </div>
                 <p style="margin-top: 20px; color: var(--earth-brown);">
-                    <strong>Total Payments:</strong> £${payments.reduce((sum, p) => sum + p.amount, 0).toFixed(2)}
+                    <strong>Total Payments (Active):</strong> £${payments.filter(p => !p.cancelled).reduce((sum, p) => sum + p.amount, 0).toFixed(2)}
+                    <span style="margin-left: 20px; color: #999;">
+                        <strong>Voided:</strong> £${payments.filter(p => p.cancelled).reduce((sum, p) => sum + p.amount, 0).toFixed(2)}
+                    </span>
                 </p>
             `;
         }
@@ -449,26 +454,25 @@
             document.getElementById('edit-payment-form').reset();
         }
 
-        function deletePaymentFromModal() {
-            const id = document.getElementById('edit-payment-id').value;
-            if (confirm('Are you sure you want to delete this payment?')) {
-                closeEditPaymentModal();
-                deletePayment(id);
+        async function voidPayment(id) {
+            if (!confirm('Are you sure you want to VOID this payment?\n\nThis will mark the payment as cancelled and exclude it from balance calculations, but keep it in the audit trail.')) {
+                return;
             }
-        }
-
-        async function deletePayment(id) {
+            
             try {
-                const response = await fetch(`${API_URL}/payments/${id}`, { method: 'DELETE' });
+                const response = await fetch(`${API_URL}/payments/${id}/void`, { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
                 if (response.ok) {
-                    showAlert('Transaction deleted successfully', 'success');
+                    showAlert('Payment voided successfully', 'success');
                     await loadPayments();
                     await loadFamilies();
                 } else {
-                    showAlert('Error deleting transaction', 'error');
+                    showAlert('Error voiding payment', 'error');
                 }
             } catch (error) {
-                showAlert('Error deleting transaction', 'error');
+                showAlert('Error voiding payment', 'error');
             }
         }
 
