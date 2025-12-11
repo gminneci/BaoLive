@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Sign-ups - Sefton Park Camping</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Activity Sign-ups</h1>
+            <p class="subtitle">Sign up for exciting camping activities!</p>
+        </header>
+
+        <nav>
+            <a href="index.html" class="btn btn-info btn-small">← Back to Home</a>
+            <a href="register.html" class="btn btn-secondary btn-small">📝 My Registration</a>
+        </nav>
+
+        <div class="card">
+            <div id="alert-container"></div>
+
+            <div id="login-prompt" class="hidden">
+                <p style="text-align: center; color: var(--earth-brown); margin-bottom: 20px;">
+                    Please access your family registration first to sign up for activities.
+                </p>
+                <a href="access.html" class="btn btn-primary btn-block">Access My Registration</a>
+            </div>
+
+            <div id="activities-container" class="hidden">
+                <h3 style="color: var(--forest-green); margin-bottom: 20px;">Available Activities</h3>
+                <div id="activities-list"></div>
+            </div>
+
+            <div id="my-signups" class="hidden">
+                <h3 style="color: var(--sunset-orange); margin-top: 40px; margin-bottom: 20px;">My Activity Sign-ups
+                </h3>
+                <div id="signups-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:3001/api'
+            : '/api';
+
+        let accessKey = null;
+        let familyData = null;
+        let activities = [];
+        let mySignups = [];
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            accessKey = localStorage.getItem('accessKey');
+
+            if (!accessKey) {
+                document.getElementById('login-prompt').classList.remove('hidden');
+                return;
+            }
+
+            await loadFamilyData();
+            await loadActivities();
+            await loadMySignups();
+        });
+
+        async function loadFamilyData() {
+            try {
+                const response = await fetch(`${API_URL}/families/access/${accessKey}`);
+                if (response.ok) {
+                    familyData = await response.json();
+                    document.getElementById('activities-container').classList.remove('hidden');
+                    document.getElementById('my-signups').classList.remove('hidden');
+                } else {
+                    document.getElementById('login-prompt').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading family data:', error);
+                showAlert('Error loading family data', 'error');
+            }
+        }
+
+        async function loadActivities() {
+            try {
+                const response = await fetch(`${API_URL}/activities`);
+                if (response.ok) {
+                    activities = await response.json();
+                    renderActivities();
+                }
+            } catch (error) {
+                console.error('Error loading activities:', error);
+                showAlert('Error loading activities', 'error');
+            }
+        }
+
+        async function loadMySignups() {
+            try {
+                const response = await fetch(`${API_URL}/activity-signups/family/${accessKey}`);
+                if (response.ok) {
+                    mySignups = await response.json();
+                    renderMySignups();
+                }
+            } catch (error) {
+                console.error('Error loading signups:', error);
+            }
+        }
+
+        function renderActivities() {
+            const container = document.getElementById('activities-list');
+            const children = familyData.members.filter(m => m.is_child);
+
+            if (children.length === 0) {
+                container.innerHTML = '<p>No children registered. Please update your registration to add children.</p>';
+                return;
+            }
+
+            container.innerHTML = activities.map(activity => {
+                const existingSignup = mySignups.find(s => s.activity_id === activity.id);
+                const signedUpChildren = existingSignup ? existingSignup.children : [];
+
+                return `
+          <div class="activity-card">
+            <div class="activity-header">
+              <div class="activity-name">${activity.name}</div>
+              <div class="activity-cost">£${activity.cost.toFixed(2)}</div>
+            </div>
+            <div class="activity-time">📅 ${activity.session_time}</div>
+            <p style="margin-bottom: 15px; color: var(--earth-brown);">${activity.description}</p>
+
+            <div style="margin-top: 15px;">
+              <strong style="color: var(--forest-green);">Select Children:</strong>
+              <div class="checkbox-group" style="margin-top: 10px;">
+                ${children.map(child => `
+                  <label class="checkbox-label">
+                    <input 
+                      type="checkbox" 
+                      class="activity-child-checkbox"
+                      data-activity-id="${activity.id}"
+                      data-child-name="${child.name}"
+                      ${signedUpChildren.includes(child.name) ? 'checked' : ''}
+                    >
+                    <span>${child.name}</span>
+                  </label>
+                `).join('')}
+              </div>
+            </div>
+
+            <button 
+              class="btn btn-primary btn-small mt-20" 
+              onclick="saveActivitySignup(${activity.id})"
+            >
+              ${existingSignup ? 'Update Sign-up' : 'Sign Up'}
+            </button>
+
+            ${existingSignup && activity.cost > 0 ? `
+              <div style="margin-top: 15px; padding: 15px; background: var(--light-cream); border-radius: 10px;">
+                <strong>Payment Status:</strong> 
+                <span class="paid-badge ${existingSignup.paid ? 'yes' : 'no'}">
+                  ${existingSignup.paid ? 'Paid ✓' : 'Not Paid'}
+                </span>
+                ${!existingSignup.paid ? `
+                  <br><br>
+                  <a href="#" class="btn btn-warning btn-small" onclick="alert('Payment link: [To be configured by organizers]'); return false;">
+                    Pay Now (External Link)
+                  </a>
+                ` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+            }).join('');
+        }
+
+        function renderMySignups() {
+            const container = document.getElementById('signups-list');
+
+            if (mySignups.length === 0) {
+                container.innerHTML = '<p style="color: var(--earth-brown);">No activities signed up yet.</p>';
+                return;
+            }
+
+            container.innerHTML = `
+        <div style="background: var(--light-cream); padding: 20px; border-radius: 15px;">
+          ${mySignups.map(signup => `
+            <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid white;">
+              <strong style="color: var(--forest-green);">${signup.activity_name}</strong>
+              <br>
+              <small style="color: var(--leaf-green);">${signup.session_time}</small>
+              <br>
+              <strong>Children:</strong> ${signup.children.join(', ')}
+              ${signup.cost > 0 ? `
+                <br>
+                <strong>Cost:</strong> £${signup.cost.toFixed(2)} × ${signup.children.length} = £${(signup.cost * signup.children.length).toFixed(2)}
+                <br>
+                <span class="paid-badge ${signup.paid ? 'yes' : 'no'}">
+                  ${signup.paid ? 'Paid ✓' : 'Not Paid'}
+                </span>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+        }
+
+        async function saveActivitySignup(activityId) {
+            const checkboxes = document.querySelectorAll(
+                `input[data-activity-id="${activityId}"]:checked`
+            );
+
+            const selectedChildren = Array.from(checkboxes).map(cb => cb.dataset.childName);
+
+            if (selectedChildren.length === 0) {
+                showAlert('Please select at least one child for this activity', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/activity-signups`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        activity_id: activityId,
+                        access_key: accessKey,
+                        children: selectedChildren
+                    })
+                });
+
+                if (response.ok) {
+                    showAlert('Activity sign-up saved! 🎉', 'success');
+                    await loadMySignups();
+                    renderActivities();
+                } else {
+                    showAlert('Error saving sign-up', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Error saving sign-up', 'error');
+            }
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `
+        <div class="alert alert-${type}">
+          ${message}
+        </div>
+      `;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Sefton Park Camping</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>👨‍💼 Admin Dashboard</h1>
+            <p class="subtitle">Manage registrations and activities</p>
+        </header>
+
+        <nav>
+            <a href="index.html" class="btn btn-info btn-small">← Back to Home</a>
+        </nav>
+
+        <!-- Family Registrations -->
+        <div class="card">
+            <div class="flex-between mb-20">
+                <h2 style="color: var(--forest-green);">Family Registrations</h2>
+                <button class="btn btn-primary btn-small" onclick="exportFamilies()">
+                    📋 Copy CSV
+                </button>
+            </div>
+
+            <div id="families-container">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- Activity Sign-ups -->
+        <div class="card">
+            <div class="flex-between mb-20">
+                <h2 style="color: var(--sunset-orange);">Activity Sign-ups</h2>
+                <button class="btn btn-primary btn-small" onclick="exportActivities()">
+                    📋 Copy CSV
+                </button>
+            </div>
+
+            <div id="activities-container">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- Add New Activity -->
+        <div class="card">
+            <h2 style="color: var(--leaf-green); margin-bottom: 20px;">Add New Activity</h2>
+
+            <form id="add-activity-form">
+                <div class="form-group">
+                    <label>Activity Name *</label>
+                    <input type="text" id="activity-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Session Time *</label>
+                    <input type="text" id="activity-time" placeholder="e.g., Saturday 10:00 AM" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Cost (£)</label>
+                    <input type="number" id="activity-cost" step="0.01" min="0" value="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="activity-description" rows="3"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-secondary btn-block">Add Activity</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:3001/api'
+            : '/api';
+
+        let families = [];
+        let activitySignups = [];
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadFamilies();
+            await loadActivitySignups();
+        });
+
+        async function loadFamilies() {
+            try {
+                const response = await fetch(`${API_URL}/families`);
+                if (response.ok) {
+                    families = await response.json();
+                    renderFamilies();
+                }
+            } catch (error) {
+                console.error('Error loading families:', error);
+                document.getElementById('families-container').innerHTML =
+                    '<p class="alert alert-error">Error loading families</p>';
+            }
+        }
+
+        async function loadActivitySignups() {
+            try {
+                const response = await fetch(`${API_URL}/activity-signups`);
+                if (response.ok) {
+                    activitySignups = await response.json();
+                    renderActivitySignups();
+                }
+            } catch (error) {
+                console.error('Error loading activity signups:', error);
+                document.getElementById('activities-container').innerHTML =
+                    '<p class="alert alert-error">Error loading activity signups</p>';
+            }
+        }
+
+        function renderFamilies() {
+            const container = document.getElementById('families-container');
+
+            if (families.length === 0) {
+                container.innerHTML = '<p>No families registered yet.</p>';
+                return;
+            }
+
+            container.innerHTML = `
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Booking Ref</th>
+                <th>Family Members</th>
+                <th>Camping Type</th>
+                <th>Nights</th>
+                <th>Sefton Park Students</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${families.map(family => {
+                const children = family.members.filter(m => m.is_child);
+                const adults = family.members.filter(m => !m.is_child);
+                const seftonChildren = family.members.filter(m => m.is_child && m.in_sefton_park);
+
+                return `
+                  <tr>
+                    <td><strong>${family.booking_ref}</strong></td>
+                    <td>
+                      ${children.length > 0 ? `<strong>Children:</strong> ${children.map(c => c.name).join(', ')}<br>` : ''}
+                      ${adults.length > 0 ? `<strong>Adults:</strong> ${adults.map(a => a.name).join(', ')}` : ''}
+                    </td>
+                    <td>${family.camping_type === 'tent' ? '⛺ Tent' : '🚐 Campervan'}</td>
+                    <td>${family.nights.join(', ')}</td>
+                    <td>
+                      ${seftonChildren.map(c =>
+                    `${c.name} (Year ${c.year || '?'}, ${c.class || 'N/A'})`
+                ).join('<br>') || 'None'}
+                    </td>
+                  </tr>
+                `;
+            }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top: 20px; color: var(--earth-brown);">
+          <strong>Total Families:</strong> ${families.length} | 
+          <strong>Total Children:</strong> ${families.reduce((sum, f) => sum + f.members.filter(m => m.is_child).length, 0)}
+        </p>
+      `;
+        }
+
+        function renderActivitySignups() {
+            const container = document.getElementById('activities-container');
+
+            if (activitySignups.length === 0) {
+                container.innerHTML = '<p>No activity sign-ups yet.</p>';
+                return;
+            }
+
+            container.innerHTML = `
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Activity</th>
+                <th>Session Time</th>
+                <th>Booking Ref</th>
+                <th>Children</th>
+                <th>Cost</th>
+                <th>Payment Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${activitySignups.map(signup => {
+                const totalCost = signup.cost * signup.children.length;
+                return `
+                  <tr>
+                    <td><strong>${signup.activity_name}</strong></td>
+                    <td>${signup.session_time}</td>
+                    <td>${signup.booking_ref}</td>
+                    <td>${signup.children.join(', ')}</td>
+                    <td>£${totalCost.toFixed(2)}</td>
+                    <td>
+                      <span class="paid-badge ${signup.paid ? 'yes' : 'no'}">
+                        ${signup.paid ? 'Paid ✓' : 'Not Paid'}
+                      </span>
+                    </td>
+                    <td>
+                      ${!signup.paid ? `
+                        <button 
+                          class="btn btn-primary btn-small" 
+                          onclick="markAsPaid(${signup.id}, ${totalCost})"
+                        >
+                          Mark Paid
+                        </button>
+                      ` : `
+                        <button 
+                          class="btn btn-warning btn-small" 
+                          onclick="markAsUnpaid(${signup.id})"
+                        >
+                          Mark Unpaid
+                        </button>
+                      `}
+                    </td>
+                  </tr>
+                `;
+            }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top: 20px; color: var(--earth-brown);">
+          <strong>Total Sign-ups:</strong> ${activitySignups.length} | 
+          <strong>Total Revenue:</strong> £${activitySignups.reduce((sum, s) => sum + (s.cost * s.children.length), 0).toFixed(2)} | 
+          <strong>Paid:</strong> £${activitySignups.filter(s => s.paid).reduce((sum, s) => sum + s.amount_paid, 0).toFixed(2)}
+        </p>
+      `;
+        }
+
+        async function markAsPaid(signupId, amount) {
+            try {
+                const response = await fetch(`${API_URL}/activity-signups/${signupId}/payment`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        paid: true,
+                        amount_paid: amount
+                    })
+                });
+
+                if (response.ok) {
+                    await loadActivitySignups();
+                }
+            } catch (error) {
+                console.error('Error updating payment:', error);
+                alert('Error updating payment status');
+            }
+        }
+
+        async function markAsUnpaid(signupId) {
+            try {
+                const response = await fetch(`${API_URL}/activity-signups/${signupId}/payment`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        paid: false,
+                        amount_paid: 0
+                    })
+                });
+
+                if (response.ok) {
+                    await loadActivitySignups();
+                }
+            } catch (error) {
+                console.error('Error updating payment:', error);
+                alert('Error updating payment status');
+            }
+        }
+
+        async function exportFamilies() {
+            try {
+                const response = await fetch(`${API_URL}/export/families`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const csv = convertToCSV(data);
+                    await navigator.clipboard.writeText(csv);
+                    alert('Family data copied to clipboard! You can now paste it into Google Sheets.');
+                }
+            } catch (error) {
+                console.error('Error exporting families:', error);
+                alert('Error exporting data');
+            }
+        }
+
+        async function exportActivities() {
+            try {
+                const response = await fetch(`${API_URL}/export/activities`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const csv = convertToCSV(data);
+                    await navigator.clipboard.writeText(csv);
+                    alert('Activity data copied to clipboard! You can now paste it into Google Sheets.');
+                }
+            } catch (error) {
+                console.error('Error exporting activities:', error);
+                alert('Error exporting data');
+            }
+        }
+
+        function convertToCSV(data) {
+            if (data.length === 0) return '';
+
+            const headers = Object.keys(data[0]);
+            const csvRows = [
+                headers.join(','),
+                ...data.map(row =>
+                    headers.map(header => {
+                        const value = row[header] || '';
+                        // Escape quotes and wrap in quotes if contains comma
+                        const escaped = String(value).replace(/"/g, '""');
+                        return escaped.includes(',') ? `"${escaped}"` : escaped;
+                    }).join(',')
+                )
+            ];
+
+            return csvRows.join('\n');
+        }
+
+        document.getElementById('add-activity-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('activity-name').value;
+            const session_time = document.getElementById('activity-time').value;
+            const cost = parseFloat(document.getElementById('activity-cost').value) || 0;
+            const description = document.getElementById('activity-description').value;
+
+            try {
+                const response = await fetch(`${API_URL}/activities`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name,
+                        session_time,
+                        cost,
+                        description
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Activity added successfully! 🎉');
+                    e.target.reset();
+                    // Optionally reload the page to show the new activity
+                } else {
+                    alert('Error adding activity');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error adding activity');
+            }
+        });
+    </script>
+</body>
+
+</html>

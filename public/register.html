@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Registration - Sefton Park Camping</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Family Registration</h1>
+            <p class="subtitle">Register your family for the camping trip</p>
+        </header>
+
+        <nav>
+            <a href="index.html" class="btn btn-info btn-small">← Back to Home</a>
+        </nav>
+
+        <div class="card">
+            <div id="alert-container"></div>
+
+            <form id="registration-form">
+                <!-- Booking Reference -->
+                <div class="form-group">
+                    <label for="booking-ref">Booking Reference *</label>
+                    <input type="text" id="booking-ref" placeholder="e.g., 46e9a" required>
+                    <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
+                        The reference code you received from Mendip Basecamp
+                    </small>
+                </div>
+
+                <!-- Camping Details -->
+                <div class="form-group">
+                    <label>Camping Type *</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="radio" name="camping-type" value="tent" required>
+                            <span>⛺ Tent</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="radio" name="camping-type" value="campervan">
+                            <span>🚐 Campervan</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Which Night(s)? *</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="nights" value="Friday">
+                            <span>Friday Night</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="nights" value="Saturday">
+                            <span>Saturday Night</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Family Members -->
+                <div class="form-group">
+                    <label>Family Members</label>
+                    <div id="members-container"></div>
+                    <button type="button" class="btn btn-secondary btn-small mt-20" onclick="addMember(true)">
+                        + Add Child
+                    </button>
+                    <button type="button" class="btn btn-info btn-small mt-20" onclick="addMember(false)">
+                        + Add Adult
+                    </button>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Save Registration</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:3001/api'
+            : '/api';
+
+        let memberCount = 0;
+        let existingFamily = null;
+
+        // Check if we're editing an existing registration
+        window.addEventListener('DOMContentLoaded', async () => {
+            const accessKey = localStorage.getItem('accessKey');
+            if (accessKey) {
+                await loadExistingFamily(accessKey);
+            } else {
+                // Add one child by default for new registrations
+                addMember(true);
+            }
+        });
+
+        async function loadExistingFamily(accessKey) {
+            try {
+                const response = await fetch(`${API_URL}/families/access/${accessKey}`);
+                if (response.ok) {
+                    existingFamily = await response.json();
+                    populateForm(existingFamily);
+                    showAlert('Editing existing registration', 'info');
+                }
+            } catch (error) {
+                console.error('Error loading family:', error);
+            }
+        }
+
+        function populateForm(family) {
+            document.getElementById('booking-ref').value = family.booking_ref;
+            document.querySelector(`input[name="camping-type"][value="${family.camping_type}"]`).checked = true;
+
+            family.nights.forEach(night => {
+                document.querySelector(`input[name="nights"][value="${night}"]`).checked = true;
+            });
+
+            family.members.forEach(member => {
+                addMember(member.is_child === 1, member);
+            });
+        }
+
+        function addMember(isChild, data = null) {
+            memberCount++;
+            const membersContainer = document.getElementById('members-container');
+
+            const memberCard = document.createElement('div');
+            memberCard.className = `member-card ${isChild ? 'child' : ''}`;
+            memberCard.id = `member-${memberCount}`;
+
+            memberCard.innerHTML = `
+        <button type="button" class="remove-btn" onclick="removeMember(${memberCount})">×</button>
+        <h4 style="color: var(--forest-green); margin-bottom: 15px;">
+          ${isChild ? '👦 Child' : '👨 Adult'}
+        </h4>
+        
+        <div class="form-group">
+          <label>Name *</label>
+          <input 
+            type="text" 
+            name="member-name-${memberCount}" 
+            value="${data?.name || ''}"
+            required
+          >
+        </div>
+
+        <input type="hidden" name="member-is-child-${memberCount}" value="${isChild ? '1' : '0'}">
+
+        ${isChild ? `
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                name="member-sefton-${memberCount}"
+                ${data?.in_sefton_park ? 'checked' : ''}
+              >
+              <span>Attends Sefton Park School</span>
+            </label>
+          </div>
+
+          <div class="form-group" id="sefton-details-${memberCount}" style="display: ${data?.in_sefton_park ? 'block' : 'none'};">
+            <label>Year</label>
+            <select name="member-year-${memberCount}">
+              <option value="">Select Year</option>
+              <option value="1" ${data?.year === '1' ? 'selected' : ''}>Year 1</option>
+              <option value="2" ${data?.year === '2' ? 'selected' : ''}>Year 2</option>
+              <option value="3" ${data?.year === '3' ? 'selected' : ''}>Year 3</option>
+              <option value="4" ${data?.year === '4' ? 'selected' : ''}>Year 4</option>
+              <option value="5" ${data?.year === '5' ? 'selected' : ''}>Year 5</option>
+              <option value="6" ${data?.year === '6' ? 'selected' : ''}>Year 6</option>
+            </select>
+
+            <label style="margin-top: 10px;">Class (if Year 3)</label>
+            <select name="member-class-${memberCount}">
+              <option value="">Select Class</option>
+              <option value="Baobab" ${data?.class === 'Baobab' ? 'selected' : ''}>Baobab</option>
+              <option value="Olive" ${data?.class === 'Olive' ? 'selected' : ''}>Olive</option>
+            </select>
+          </div>
+        ` : ''}
+      `;
+
+            membersContainer.appendChild(memberCard);
+
+            // Add event listener for Sefton Park checkbox
+            if (isChild) {
+                const checkbox = document.querySelector(`input[name="member-sefton-${memberCount}"]`);
+                checkbox.addEventListener('change', (e) => {
+                    const details = document.getElementById(`sefton-details-${memberCount}`);
+                    details.style.display = e.target.checked ? 'block' : 'none';
+                });
+            }
+        }
+
+        function removeMember(id) {
+            const member = document.getElementById(`member-${id}`);
+            if (member) {
+                member.remove();
+            }
+        }
+
+        function generateAccessKey(childNames) {
+            return childNames
+                .map(name => name.toLowerCase().trim())
+                .sort()
+                .join('-');
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `
+        <div class="alert alert-${type}">
+          ${message}
+        </div>
+      `;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        document.getElementById('registration-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const bookingRef = document.getElementById('booking-ref').value;
+            const campingType = formData.get('camping-type');
+            const nights = formData.getAll('nights');
+
+            if (nights.length === 0) {
+                showAlert('Please select at least one night', 'error');
+                return;
+            }
+
+            // Collect all members
+            const members = [];
+            const memberCards = document.querySelectorAll('.member-card');
+
+            memberCards.forEach((card) => {
+                const id = card.id.split('-')[1];
+                const name = formData.get(`member-name-${id}`);
+                const isChild = formData.get(`member-is-child-${id}`) === '1';
+                const inSeftonPark = formData.get(`member-sefton-${id}`) === 'on';
+                const year = formData.get(`member-year-${id}`) || null;
+                const classValue = formData.get(`member-class-${id}`) || null;
+
+                if (name) {
+                    members.push({
+                        name,
+                        is_child: isChild,
+                        in_sefton_park: inSeftonPark,
+                        year,
+                        class: classValue
+                    });
+                }
+            });
+
+            if (members.length === 0) {
+                showAlert('Please add at least one family member', 'error');
+                return;
+            }
+
+            const childNames = members.filter(m => m.is_child).map(m => m.name);
+            if (childNames.length === 0) {
+                showAlert('Please add at least one child', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/families`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        booking_ref: bookingRef,
+                        members,
+                        camping_type: campingType,
+                        nights
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // Store access key in localStorage
+                    localStorage.setItem('accessKey', result.access_key);
+
+                    showAlert('Registration saved successfully! 🎉 Redirecting to activities...', 'success');
+
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'activities.html';
+                    }, 1500);
+                } else {
+                    showAlert(result.error || 'Error saving registration', 'error');
+                }
+            } catch (error) {
+                showAlert('Error saving registration. Please try again.', 'error');
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+
+</html>

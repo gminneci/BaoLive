@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access My Registration - Sefton Park Camping</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🔑 Access My Registration</h1>
+            <p class="subtitle">View and edit your family's camping details</p>
+        </header>
+
+        <nav>
+            <a href="index.html" class="btn btn-info btn-small">← Back to Home</a>
+        </nav>
+
+        <div class="card">
+            <div id="alert-container"></div>
+
+            <form id="access-form">
+                <div class="form-group">
+                    <label for="child-names">Enter Your Child's Name(s)</label>
+                    <input type="text" id="child-names" placeholder="e.g., Emma or Emma, Oliver (for twins)" required>
+                    <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
+                        Enter the name(s) of your child/children exactly as you registered them
+                    </small>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Access Registration</button>
+            </form>
+        </div>
+
+        <div class="card text-center">
+            <p style="color: var(--earth-brown);">
+                <strong>New to the trip?</strong><br>
+                <a href="register.html" style="color: var(--bright-green);">Create a new registration →</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:3001/api'
+            : '/api';
+
+        function generateAccessKey(childNames) {
+            return childNames
+                .split(',')
+                .map(name => name.toLowerCase().trim())
+                .sort()
+                .join('-');
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alert-container');
+            alertContainer.innerHTML = `
+        <div class="alert alert-${type}">
+          ${message}
+        </div>
+      `;
+            setTimeout(() => {
+                alertContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        document.getElementById('access-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const childNames = document.getElementById('child-names').value;
+            const accessKey = generateAccessKey(childNames);
+
+            try {
+                const response = await fetch(`${API_URL}/families/access/${accessKey}`);
+
+                if (response.ok) {
+                    // Store access key and redirect to registration page
+                    localStorage.setItem('accessKey', accessKey);
+                    window.location.href = 'register.html';
+                } else {
+                    showAlert('Family not found. Please check the child name(s) and try again, or create a new registration.', 'error');
+                }
+            } catch (error) {
+                showAlert('Error accessing registration. Please try again.', 'error');
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+
+</html>
