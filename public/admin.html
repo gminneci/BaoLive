@@ -478,6 +478,8 @@
                         loadFamilies(),
                         loadActivitySignups()
                     ]);
+                    // Re-render signups with updated family data
+                    renderActivitySignups();
                 } else {
                     showAlert('Error voiding payment', 'error');
                 }
@@ -505,6 +507,8 @@
                         loadFamilies(),
                         loadActivitySignups()
                     ]);
+                    // Re-render signups with updated family data
+                    renderActivitySignups();
                 } else {
                     showAlert('Error reinstating payment', 'error');
                 }

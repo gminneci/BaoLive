@@ -524,20 +524,42 @@ app.post('/api/activity-signups', (req, res) => {
                 }
 
                 if (existing) {
-                    // Update existing signup
-                    db.run(
-                        'UPDATE activity_signups SET children = ? WHERE id = ?',
-                        [JSON.stringify(children), existing.id],
-                        function (err) {
-                            if (err) {
-                                return res.status(500).json({ error: err.message });
+                    // If no children selected, delete the signup
+                    if (!children || children.length === 0) {
+                        db.run(
+                            'DELETE FROM activity_signups WHERE id = ?',
+                            [existing.id],
+                            function (err) {
+                                if (err) {
+                                    return res.status(500).json({ error: err.message });
+                                }
+                                // Check capacity and auto-disable if full
+                                checkAndUpdateActivityCapacity(activity_id);
+                                res.json({ success: true, deleted: true });
                             }
-                            // Check capacity and auto-disable if full
-                            checkAndUpdateActivityCapacity(activity_id);
-                            res.json({ success: true, id: existing.id });
-                        }
-                    );
+                        );
+                    } else {
+                        // Update existing signup
+                        db.run(
+                            'UPDATE activity_signups SET children = ? WHERE id = ?',
+                            [JSON.stringify(children), existing.id],
+                            function (err) {
+                                if (err) {
+                                    return res.status(500).json({ error: err.message });
+                                }
+                                // Check capacity and auto-disable if full
+                                checkAndUpdateActivityCapacity(activity_id);
+                                res.json({ success: true, id: existing.id });
+                            }
+                        );
+                    }
                 } else {
+                    // Only create new signup if children are selected
+                    if (!children || children.length === 0) {
+                        // No children selected and no existing signup - nothing to do
+                        return res.json({ success: true, skipped: true });
+                    }
+                    
                     // Create new signup
                     db.run(
                         `INSERT INTO activity_signups (activity_id, family_id, children) VALUES (?, ?, ?)`,
