@@ -1,9 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const session = require('express-session');
-const passport = require('passport');
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { db, initDatabase } = require('./database');
 
 const app = express();
@@ -13,69 +12,68 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Auth setup (Google OAuth)
-const AUTH_ENABLED = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-if (AUTH_ENABLED) {
-    app.use(session({
-        secret: process.env.SESSION_SECRET || 'replace-this-session-secret',
-        resave: false,
-        saveUninitialized: false,
-        cookie: { secure: false }
-    }));
-
-    passport.use(new GoogleStrategy({
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: process.env.GOOGLE_CALLBACK_URL || '/auth/google/callback'
-    }, (accessToken, refreshToken, profile, done) => {
-        const emails = profile.emails || [];
-        const email = emails.length ? emails[0].value : null;
-        const allowList = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
-        const isGmail = email && email.toLowerCase().endsWith('@gmail.com');
-        const allowed = allowList.length > 0 ? allowList.includes(email) : isGmail;
-        if (!allowed) {
-            return done(null, false, { message: 'Not authorized' });
-        }
-        return done(null, { id: profile.id, email, name: profile.displayName });
-    }));
-
-    passport.serializeUser((user, done) => {
-        done(null, user);
-    });
-    passport.deserializeUser((obj, done) => {
-        done(null, obj);
-    });
-
-    app.use(passport.initialize());
-    app.use(passport.session());
-
-    // Protect /admin.html before static serving
-    app.use((req, res, next) => {
-        if (req.path === '/admin.html') {
-            if (req.isAuthenticated && req.isAuthenticated()) return next();
-            return res.redirect('/auth/google');
-        }
-        next();
-    });
-
-    // Auth routes
-    app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-    app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login.html' }),
-        (req, res) => {
-            res.redirect('/admin.html');
-        }
-    );
-    app.get('/logout', (req, res) => {
-        req.logout(() => {
-            res.redirect('/');
-        });
-    });
-} else {
-    console.warn('Auth disabled: Set GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET to enable admin auth.');
+// Load admin emails from config file
+let ADMIN_EMAILS = [];
+try {
+    const configPath = path.join(__dirname, 'admin-config.json');
+    const configData = fs.readFileSync(configPath, 'utf8');
+    const config = JSON.parse(configData);
+    ADMIN_EMAILS = (config.adminEmails || []).map(e => e.trim().toLowerCase());
+    console.log(`Loaded ${ADMIN_EMAILS.length} admin email(s) from config`);
+} catch (error) {
+    console.warn('Could not load admin-config.json, admin access will be restricted');
 }
+
+// Session setup
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'baolive-secret-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 hours
+}));
+
+// Protect /admin.html before static serving
+app.use((req, res, next) => {
+    if (req.path === '/admin.html') {
+        if (req.session.adminEmail) return next();
+        return res.redirect('/login.html');
+    }
+    next();
+});
 
 // Static files
 app.use(express.static('public'));
+
+// Auth routes
+app.post('/api/auth/signin', (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ error: 'Email required' });
+    }
+    
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    // Check if email is in allowlist
+    if (ADMIN_EMAILS.length === 0 || !ADMIN_EMAILS.includes(normalizedEmail)) {
+        return res.status(403).json({ error: 'Access denied. Only authorized emails are allowed.' });
+    }
+    
+    // Store email in session
+    req.session.adminEmail = normalizedEmail;
+    return res.json({ success: true, email: normalizedEmail });
+});
+
+app.get('/api/auth/signout', (req, res) => {
+    req.session.destroy();
+    res.redirect('/');
+});
+
+app.get('/api/auth/session', (req, res) => {
+    if (req.session.adminEmail) {
+        return res.json({ authenticated: true, email: req.session.adminEmail });
+    }
+    return res.json({ authenticated: false });
+});
 
 // Initialize database
 initDatabase();
@@ -325,8 +323,7 @@ app.get('/api/activities/all', (req, res) => {
 
 // Create activity (admin)
 const requireAdmin = (req, res, next) => {
-    if (!AUTH_ENABLED) return next();
-    if (req.isAuthenticated && req.isAuthenticated()) return next();
+    if (req.session.adminEmail) return next();
     return res.status(401).json({ error: 'Unauthorized' });
 };
 

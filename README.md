@@ -38,7 +38,7 @@ npm start
 
 3. Open your browser and navigate to:
 ```
-http://localhost:3000
+http://localhost:3001
 ```
 
 ## Usage
@@ -78,11 +78,48 @@ Sample activities are pre-loaded:
 
 ## Deployment to Railway
 
-1. Create a new project on [Railway](https://railway.app)
-2. Connect your GitHub repository
-3. Railway will automatically detect the Node.js app
-4. The database file (`camping.db`) will persist in Railway's volume storage
-5. Set environment variables if needed (PORT is auto-configured)
+Railway automatically builds and runs this Node.js app and persists the SQLite database.
+
+### 1) Create & connect
+- Create a project at https://railway.app
+- Deploy from your GitHub repo
+
+### 2) Ensure public networking
+- The server binds to `0.0.0.0` and uses `PORT` (already configured)
+- Railway will provide a public URL like `https://<app>.up.railway.app`
+
+### 3) Environment variables (for Admin auth)
+Add these in Railway → Service → Variables:
+- `GOOGLE_CLIENT_ID`: From Google Cloud OAuth credentials
+- `GOOGLE_CLIENT_SECRET`: From Google Cloud
+- `GOOGLE_CALLBACK_URL`: `https://<your-app>.up.railway.app/auth/google/callback`
+- `SESSION_SECRET`: Any long random string
+- `ADMIN_EMAILS` (optional): Comma-separated allowlist; if omitted, any `@gmail.com` can access admin
+
+### 4) Google OAuth setup
+In Google Cloud Console:
+- Create OAuth 2.0 Client ID (Web application)
+- Authorized redirect URI: `https://<your-app>.up.railway.app/auth/google/callback`
+- Copy Client ID and Secret into Railway variables above
+
+### 5) Production API base URL
+The frontend uses [public/common.js](public/common.js). In production it points to `https://<your-app>.up.railway.app/api`.
+
+### 6) Admin protection
+- Visiting [public/admin.html](public/admin.html) without auth redirects to Google sign-in
+- Admin-only APIs (create/update/delete activities) require auth
+- Family registration and activity signup endpoints remain public
+
+### Troubleshooting
+- If Railway build fails with `npm ci` lock mismatch, run locally:
+```bash
+npm install
+git add package-lock.json
+git commit -m "Update lockfile"
+git push
+```
+- Confirm your public URL and `GOOGLE_CALLBACK_URL` match exactly
+- Check logs in Railway Deployments for runtime errors
 
 ## Security Notes
 
@@ -90,6 +127,7 @@ Sample activities are pre-loaded:
 - **No Sensitive Data**: Only camping trip information is stored
 - **Payment Links**: Currently using dummy links - configure external payment provider as needed
 - **Access Control**: Simple family-based access (suitable for low-sensitivity data)
+   - Admin is protected via Google OAuth in production
 
 ## Future Enhancements
 
@@ -106,3 +144,8 @@ For questions or issues, contact the trip organizers.
 ---
 
 Made with ❤️ for Sefton Park School
+
+## Trip Details
+- Dates: 10–12 July 2025
+- Classes: Baobab & Olive (Year 3)
+- Year options include Reception through Year 6
