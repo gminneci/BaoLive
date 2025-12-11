@@ -3,7 +3,7 @@
 // API URL configuration
 const API_URL = window.location.hostname === 'localhost'
     ? 'http://localhost:3001/api'
-    : '/api';
+    : 'https://baolive-production.up.railway.app/api';
 
 // Alert utility function
 function showAlert(message, type = 'info') {
