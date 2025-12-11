@@ -44,23 +44,8 @@
         </div>
     </div>
 
+    <script src="common.js"></script>
     <script>
-        const API_URL = window.location.hostname === 'localhost'
-            ? 'http://localhost:3001/api'
-            : '/api';
-
-        function showAlert(message, type = 'info') {
-            const alertContainer = document.getElementById('alert-container');
-            alertContainer.innerHTML = `
-        <div class="alert alert-${type}">
-          ${message}
-        </div>
-      `;
-            setTimeout(() => {
-                alertContainer.innerHTML = '';
-            }, 5000);
-        }
-
         document.getElementById('access-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 

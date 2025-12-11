@@ -42,10 +42,16 @@ function initDatabase() {
         session_time TEXT,
         cost REAL DEFAULT 0,
         description TEXT,
+        max_participants INTEGER DEFAULT 0,
         available INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Add max_participants column if it doesn't exist (for existing databases)
+    db.run(`ALTER TABLE activities ADD COLUMN max_participants INTEGER DEFAULT 0`, (err) => {
+      // Ignore error if column already exists
+    });
 
     // Activity signups table
     db.run(`

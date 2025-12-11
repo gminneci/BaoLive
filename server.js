@@ -19,11 +19,8 @@ function generateAccessKey(childNames) {
     return childNames.map(name => name.toLowerCase().trim()).sort().join('-');
 }
 
-// API Routes
-
-// Get all families (admin)
-app.get('/api/families', (req, res) => {
-    const query = `
+// Helper function for family query with members (reusable)
+const FAMILY_QUERY = `
     SELECT f.*, 
            GROUP_CONCAT(
              json_object(
@@ -36,47 +33,77 @@ app.get('/api/families', (req, res) => {
              )
            ) as members
     FROM families f
-    LEFT JOIN family_members fm ON f.id = fm.family_id
+    LEFT JOIN family_members fm ON f.id = fm.family_id`;
+
+function transformFamilyRow(row) {
+    return {
+        ...row,
+        nights: JSON.parse(row.nights),
+        members: row.members ? JSON.parse(`[${row.members}]`) : []
+    };
+}
+
+// Helper function to check activity capacity and auto-disable if full
+function checkAndUpdateActivityCapacity(activityId) {
+    // Get activity details
+    db.get('SELECT max_participants FROM activities WHERE id = ?', [activityId], (err, activity) => {
+        if (err || !activity || activity.max_participants === 0) {
+            return; // No capacity limit or error
+        }
+
+        // Count current participants
+        const query = `
+            SELECT SUM(json_array_length(children)) as total_participants
+            FROM activity_signups
+            WHERE activity_id = ?
+        `;
+
+        db.get(query, [activityId], (err, result) => {
+            if (err) return;
+
+            const currentParticipants = result.total_participants || 0;
+
+            // Auto-disable if at or over capacity
+            if (currentParticipants >= activity.max_participants) {
+                db.run('UPDATE activities SET available = 0 WHERE id = ?', [activityId], (err) => {
+                    if (!err) {
+                        console.log(`Activity ${activityId} auto-disabled: ${currentParticipants}/${activity.max_participants} participants`);
+                    }
+                });
+            } else {
+                // Re-enable if was full but now has space (e.g., someone cancelled)
+                db.run('UPDATE activities SET available = 1 WHERE id = ?', [activityId], (err) => {
+                    if (!err) {
+                        console.log(`Activity ${activityId} auto-enabled: ${currentParticipants}/${activity.max_participants} participants`);
+                    }
+                });
+            }
+        });
+    });
+}
+
+// API Routes
+
+// Get all families (admin)
+app.get('/api/families', (req, res) => {
+    const query = `${FAMILY_QUERY}
     GROUP BY f.id
-    ORDER BY f.created_at DESC
-  `;
+    ORDER BY f.created_at DESC`;
 
     db.all(query, [], (err, rows) => {
         if (err) {
             return res.status(500).json({ error: err.message });
         }
-
-        const families = rows.map(row => ({
-            ...row,
-            nights: JSON.parse(row.nights),
-            members: row.members ? JSON.parse(`[${row.members}]`) : []
-        }));
-
-        res.json(families);
+        res.json(rows.map(transformFamilyRow));
     });
 });
 
 // Get family by access key
 app.get('/api/families/access/:accessKey', (req, res) => {
     const { accessKey } = req.params;
-
-    const query = `
-    SELECT f.*, 
-           GROUP_CONCAT(
-             json_object(
-               'id', fm.id,
-               'name', fm.name,
-               'is_child', fm.is_child,
-               'in_sefton_park', fm.in_sefton_park,
-               'year', fm.year,
-               'class', fm.class
-             )
-           ) as members
-    FROM families f
-    LEFT JOIN family_members fm ON f.id = fm.family_id
+    const query = `${FAMILY_QUERY}
     WHERE f.access_key = ?
-    GROUP BY f.id
-  `;
+    GROUP BY f.id`;
 
     db.get(query, [accessKey], (err, row) => {
         if (err) {
@@ -85,38 +112,16 @@ app.get('/api/families/access/:accessKey', (req, res) => {
         if (!row) {
             return res.status(404).json({ error: 'Family not found' });
         }
-
-        const family = {
-            ...row,
-            nights: JSON.parse(row.nights),
-            members: row.members ? JSON.parse(`[${row.members}]`) : []
-        };
-
-        res.json(family);
+        res.json(transformFamilyRow(row));
     });
 });
 
 // Get family by booking reference
 app.get('/api/families/booking/:bookingRef', (req, res) => {
     const { bookingRef } = req.params;
-
-    const query = `
-    SELECT f.*, 
-           GROUP_CONCAT(
-             json_object(
-               'id', fm.id,
-               'name', fm.name,
-               'is_child', fm.is_child,
-               'in_sefton_park', fm.in_sefton_park,
-               'year', fm.year,
-               'class', fm.class
-             )
-           ) as members
-    FROM families f
-    LEFT JOIN family_members fm ON f.id = fm.family_id
+    const query = `${FAMILY_QUERY}
     WHERE f.booking_ref = ?
-    GROUP BY f.id
-  `;
+    GROUP BY f.id`;
 
     db.get(query, [bookingRef], (err, row) => {
         if (err) {
@@ -125,14 +130,7 @@ app.get('/api/families/booking/:bookingRef', (req, res) => {
         if (!row) {
             return res.status(404).json({ error: 'Family not found' });
         }
-
-        const family = {
-            ...row,
-            nights: JSON.parse(row.nights),
-            members: row.members ? JSON.parse(`[${row.members}]`) : []
-        };
-
-        res.json(family);
+        res.json(transformFamilyRow(row));
     });
 });
 
@@ -212,6 +210,33 @@ function insertMembers(familyId, members, res, access_key) {
     });
 }
 
+// Delete family (admin)
+app.delete('/api/families/:id', (req, res) => {
+    const { id } = req.params;
+
+    // Delete family members first (cascade should handle this, but being explicit)
+    db.run('DELETE FROM family_members WHERE family_id = ?', [id], (err) => {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+
+        // Delete activity signups
+        db.run('DELETE FROM activity_signups WHERE family_id = ?', [id], (err) => {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+
+            // Delete the family
+            db.run('DELETE FROM families WHERE id = ?', [id], function (err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ success: true, deleted: this.changes });
+            });
+        });
+    });
+});
+
 // Get activities (for parents - only available ones)
 app.get('/api/activities', (req, res) => {
     db.all('SELECT * FROM activities WHERE available = 1 ORDER BY session_time', [], (err, rows) => {
@@ -234,11 +259,11 @@ app.get('/api/activities/all', (req, res) => {
 
 // Create activity (admin)
 app.post('/api/activities', (req, res) => {
-    const { name, session_time, cost, description, available } = req.body;
+    const { name, session_time, cost, description, max_participants, available } = req.body;
 
     db.run(
-        `INSERT INTO activities (name, session_time, cost, description, available) VALUES (?, ?, ?, ?, ?)`,
-        [name, session_time, cost || 0, description || '', available !== undefined ? available : 1],
+        `INSERT INTO activities (name, session_time, cost, description, max_participants, available) VALUES (?, ?, ?, ?, ?, ?)`,
+        [name, session_time, cost || 0, description || '', max_participants || 0, available !== undefined ? available : 1],
         function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
@@ -268,11 +293,11 @@ app.put('/api/activities/:id/availability', (req, res) => {
 // Update activity details (admin)
 app.put('/api/activities/:id', (req, res) => {
     const { id } = req.params;
-    const { name, session_time, cost, description } = req.body;
+    const { name, session_time, cost, description, max_participants } = req.body;
 
     db.run(
-        'UPDATE activities SET name = ?, session_time = ?, cost = ?, description = ? WHERE id = ?',
-        [name, session_time, cost || 0, description || '', id],
+        'UPDATE activities SET name = ?, session_time = ?, cost = ?, description = ?, max_participants = ? WHERE id = ?',
+        [name, session_time, cost || 0, description || '', max_participants || 0, id],
         function (err) {
             if (err) {
                 return res.status(500).json({ error: err.message });
@@ -280,6 +305,18 @@ app.put('/api/activities/:id', (req, res) => {
             res.json({ success: true });
         }
     );
+});
+
+// Delete activity (admin)
+app.delete('/api/activities/:id', (req, res) => {
+    const { id } = req.params;
+
+    db.run('DELETE FROM activities WHERE id = ?', [id], function (err) {
+        if (err) {
+            return res.status(500).json({ error: err.message });
+        }
+        res.json({ success: true, deleted: this.changes });
+    });
 });
 
 // Get all activity signups (admin)
@@ -374,6 +411,8 @@ app.post('/api/activity-signups', (req, res) => {
                             if (err) {
                                 return res.status(500).json({ error: err.message });
                             }
+                            // Check capacity and auto-disable if full
+                            checkAndUpdateActivityCapacity(activity_id);
                             res.json({ success: true, id: existing.id });
                         }
                     );
@@ -386,6 +425,8 @@ app.post('/api/activity-signups', (req, res) => {
                             if (err) {
                                 return res.status(500).json({ error: err.message });
                             }
+                            // Check capacity and auto-disable if full
+                            checkAndUpdateActivityCapacity(activity_id);
                             res.json({ success: true, id: this.lastID });
                         }
                     );

@@ -36,7 +36,12 @@
 
         <!-- Manage Activities -->
         <div class="card">
-            <h2 style="color: var(--leaf-green); margin-bottom: 20px;">Manage Activities</h2>
+            <div class="flex-between mb-20">
+                <h2 style="color: var(--leaf-green); margin: 0;">Manage Activities</h2>
+                <button class="btn btn-secondary btn-small" onclick="openAddModal()">
+                    ➕ Add Activity
+                </button>
+            </div>
             <p style="color: var(--earth-brown); margin-bottom: 20px;">
                 Toggle which activities are available for parents to sign up for. Only "Available" activities will be
                 shown to parents.
@@ -58,13 +63,6 @@
             <div id="activities-container">
                 <div class="spinner"></div>
             </div>
-        </div>
-
-        <!-- Add Activity Button -->
-        <div class="card text-center">
-            <button class="btn btn-secondary btn-block" onclick="openAddModal()">
-                ➕ Add New Activity
-            </button>
         </div>
     </div>
 
@@ -95,10 +93,80 @@
                     <textarea id="activity-description" rows="3"></textarea>
                 </div>
 
+                <div class="form-group">
+                    <label>Max Participants</label>
+                    <input type="number" id="activity-max-participants" min="0" value="0">
+                    <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
+                        Set to 0 for unlimited participants. Activity becomes unavailable when full.
+                    </small>
+                </div>
+
                 <div style="display: flex; gap: 10px;">
                     <button type="submit" class="btn btn-secondary" style="flex: 1;">Add Activity</button>
                     <button type="button" class="btn btn-warning" style="flex: 1;"
                         onclick="closeAddModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Family Modal -->
+    <div id="edit-family-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; overflow-y: auto;">
+        <div class="card" style="max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; margin: 20px;">
+            <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Family Registration</h2>
+
+            <form id="edit-family-form">
+                <input type="hidden" id="edit-family-id">
+                <input type="hidden" id="edit-family-access-key">
+
+                <div class="form-group">
+                    <label>Booking Reference *</label>
+                    <input type="text" id="edit-booking-ref" required readonly style="background: #f0f0f0;">
+                </div>
+
+                <div class="form-group">
+                    <label>Camping Type *</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="radio" name="edit-camping-type" value="tent" required>
+                            <span>⛺ Tent</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="radio" name="edit-camping-type" value="campervan">
+                            <span>🚐 Campervan</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Which Night(s)? *</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="edit-nights" value="Friday">
+                            <span>Friday Night</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="edit-nights" value="Saturday">
+                            <span>Saturday Night</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Family Members</label>
+                    <div id="edit-members-container"></div>
+                    <button type="button" class="btn btn-secondary btn-small mt-20" onclick="addEditMember(true)">
+                        + Add Child
+                    </button>
+                    <button type="button" class="btn btn-info btn-small mt-20" onclick="addEditMember(false)">
+                        + Add Adult
+                    </button>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                    <button type="button" class="btn btn-warning" style="flex: 1;" onclick="closeEditFamilyModal()">Cancel</button>
                 </div>
             </form>
         </div>
@@ -133,55 +201,80 @@
                     <textarea id="edit-activity-description" rows="3"></textarea>
                 </div>
 
+                <div class="form-group">
+                    <label>Max Participants</label>
+                    <input type="number" id="edit-activity-max-participants" min="0" value="0">
+                    <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
+                        Set to 0 for unlimited participants. Activity becomes unavailable when full.
+                    </small>
+                </div>
+
                 <div style="display: flex; gap: 10px;">
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
                     <button type="button" class="btn btn-warning" style="flex: 1;"
                         onclick="closeEditModal()">Cancel</button>
                 </div>
+                
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #eee;">
+                    <button type="button" class="btn btn-warning btn-block" onclick="deleteActivity()">
+                        🗑️ Delete Activity
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 
+    <script src="common.js"></script>
     <script>
-        const API_URL = window.location.hostname === 'localhost'
-            ? 'http://localhost:3001/api'
-            : '/api';
-
         let families = [];
         let activitySignups = [];
         let allActivities = [];
 
         window.addEventListener('DOMContentLoaded', async () => {
             await loadFamilies();
-            await loadAllActivities();
             await loadActivitySignups();
+            await loadAllActivities();
         });
 
         async function loadFamilies() {
             try {
+                console.log('Loading families from:', `${API_URL}/families`);
                 const response = await fetch(`${API_URL}/families`);
+                console.log('Families response status:', response.status);
                 if (response.ok) {
                     families = await response.json();
+                    console.log('Families loaded:', families.length);
                     renderFamilies();
+                } else {
+                    console.error('Families response not ok:', response.status);
+                    document.getElementById('families-container').innerHTML =
+                        '<p class="alert alert-error">Error loading families</p>';
                 }
             } catch (error) {
                 console.error('Error loading families:', error);
                 document.getElementById('families-container').innerHTML =
-                    '<p class="alert alert-error">Error loading families</p>';
+                    '<p class="alert alert-error">Error loading families: ' + error.message + '</p>';
             }
         }
 
         async function loadAllActivities() {
             try {
+                console.log('Loading activities from:', `${API_URL}/activities/all`);
                 const response = await fetch(`${API_URL}/activities/all`);
+                console.log('Activities response status:', response.status);
                 if (response.ok) {
                     allActivities = await response.json();
+                    console.log('Activities loaded:', allActivities.length);
                     renderAllActivities();
+                } else {
+                    console.error('Activities response not ok:', response.status);
+                    document.getElementById('manage-activities-container').innerHTML =
+                        '<p class="alert alert-error">Error loading activities</p>';
                 }
             } catch (error) {
                 console.error('Error loading activities:', error);
                 document.getElementById('manage-activities-container').innerHTML =
-                    '<p class="alert alert-error">Error loading activities</p>';
+                    '<p class="alert alert-error">Error loading activities: ' + error.message + '</p>';
             }
         }
 
@@ -201,47 +294,65 @@
                                 <th>Activity</th>
                                 <th>Session Time</th>
                                 <th>Cost</th>
+                                <th>Capacity</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${allActivities.map(activity => `
+                            ${allActivities.map(activity => {
+                                // Calculate current participants (check if activitySignups is loaded)
+                                const signupsForActivity = activitySignups ? activitySignups.filter(s => s.activity_id === activity.id) : [];
+                                const currentParticipants = signupsForActivity.reduce((sum, s) => sum + s.children.length, 0);
+                                const isFull = activity.max_participants > 0 && currentParticipants >= activity.max_participants;
+                                
+                                return `
                                 <tr>
                                     <td><strong>${activity.name}</strong></td>
                                     <td>${activity.session_time}</td>
                                     <td>£${activity.cost.toFixed(2)}</td>
+                                    <td>
+                                        ${activity.max_participants > 0 ? `
+                                            <span style="color: ${isFull ? 'var(--sunset-orange)' : 'var(--forest-green)'}; font-weight: bold;">
+                                                ${currentParticipants}/${activity.max_participants}
+                                            </span>
+                                            ${isFull ? ' <span style="color: var(--sunset-orange);">(FULL)</span>' : ''}
+                                        ` : '<span style="color: var(--earth-brown);">Unlimited</span>'}
+                                    </td>
                                     <td>
                                         <span class="paid-badge ${activity.available ? 'yes' : 'no'}">
                                             ${activity.available ? 'Available' : 'Unavailable'}
                                         </span>
                                     </td>
                                     <td>
-                                        <button 
-                                            class="btn btn-info btn-small" 
-                                            onclick="editActivity(${activity.id})"
-                                            style="margin-right: 10px;"
-                                        >
-                                            Edit
-                                        </button>
-                                        ${activity.available ? `
+                                        <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
                                             <button 
-                                                class="btn btn-warning btn-small" 
-                                                onclick="toggleActivityAvailability(${activity.id}, false)"
+                                                class="btn btn-info btn-small" 
+                                                onclick="editActivity(${activity.id})"
                                             >
-                                                Make Unavailable
+                                                Edit
                                             </button>
-                                        ` : `
-                                            <button 
-                                                class="btn btn-primary btn-small" 
-                                                onclick="toggleActivityAvailability(${activity.id}, true)"
-                                            >
-                                                Make Available
-                                            </button>
-                                        `}
+                                            ${activity.available ? `
+                                                <button 
+                                                    class="btn btn-warning btn-small" 
+                                                    onclick="toggleActivityAvailability(${activity.id}, false)"
+                                                    style="white-space: nowrap;"
+                                                >
+                                                    Hide
+                                                </button>
+                                            ` : `
+                                                <button 
+                                                    class="btn btn-primary btn-small" 
+                                                    onclick="toggleActivityAvailability(${activity.id}, true)"
+                                                    style="white-space: nowrap;"
+                                                >
+                                                    Show
+                                                </button>
+                                            `}
+                                        </div>
                                     </td>
                                 </tr>
-                            `).join('')}
+                            `}).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -277,6 +388,7 @@
             document.getElementById('edit-activity-time').value = activity.session_time;
             document.getElementById('edit-activity-cost').value = activity.cost;
             document.getElementById('edit-activity-description').value = activity.description || '';
+            document.getElementById('edit-activity-max-participants').value = activity.max_participants || 0;
 
             // Show the modal
             const modal = document.getElementById('edit-modal');
@@ -306,6 +418,7 @@
             const session_time = document.getElementById('edit-activity-time').value;
             const cost = parseFloat(document.getElementById('edit-activity-cost').value) || 0;
             const description = document.getElementById('edit-activity-description').value;
+            const max_participants = parseInt(document.getElementById('edit-activity-max-participants').value) || 0;
 
             try {
                 const response = await fetch(`${API_URL}/activities/${activityId}`, {
@@ -317,7 +430,8 @@
                         name,
                         session_time,
                         cost,
-                        description
+                        description,
+                        max_participants
                     })
                 });
 
@@ -336,15 +450,22 @@
 
         async function loadActivitySignups() {
             try {
+                console.log('Loading signups from:', `${API_URL}/activity-signups`);
                 const response = await fetch(`${API_URL}/activity-signups`);
+                console.log('Signups response status:', response.status);
                 if (response.ok) {
                     activitySignups = await response.json();
+                    console.log('Signups loaded:', activitySignups.length);
                     renderActivitySignups();
+                } else {
+                    console.error('Signups response not ok:', response.status);
+                    document.getElementById('activities-container').innerHTML =
+                        '<p class="alert alert-error">Error loading activity signups</p>';
                 }
             } catch (error) {
                 console.error('Error loading activity signups:', error);
                 document.getElementById('activities-container').innerHTML =
-                    '<p class="alert alert-error">Error loading activity signups</p>';
+                    '<p class="alert alert-error">Error loading activity signups: ' + error.message + '</p>';
             }
         }
 
@@ -366,6 +487,7 @@
                 <th>Camping Type</th>
                 <th>Nights</th>
                 <th>Sefton Park Students</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -387,6 +509,24 @@
                       ${seftonChildren.map(c =>
                     `${c.name} (Year ${c.year || '?'}, ${c.class || 'N/A'})`
                 ).join('<br>') || 'None'}
+                    </td>
+                    <td>
+                      <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
+                        <button 
+                          class="btn btn-info btn-small" 
+                          onclick="editFamily('${family.access_key}')"
+                          style="white-space: nowrap;"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          class="btn btn-warning btn-small" 
+                          onclick="deleteFamily('${family.access_key}', '${family.booking_ref}')"
+                          style="white-space: nowrap;"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 `;
@@ -562,6 +702,248 @@
             return csvRows.join('\n');
         }
 
+        let editMemberCount = 0;
+
+        async function editFamily(accessKey) {
+            const family = families.find(f => f.access_key === accessKey);
+            if (!family) return;
+
+            // Populate the form
+            document.getElementById('edit-family-id').value = family.id;
+            document.getElementById('edit-family-access-key').value = family.access_key;
+            document.getElementById('edit-booking-ref').value = family.booking_ref;
+            document.querySelector(`input[name="edit-camping-type"][value="${family.camping_type}"]`).checked = true;
+
+            // Set nights
+            document.querySelectorAll('input[name="edit-nights"]').forEach(cb => {
+                cb.checked = family.nights.includes(cb.value);
+            });
+
+            // Clear and populate members
+            document.getElementById('edit-members-container').innerHTML = '';
+            editMemberCount = 0;
+            family.members.forEach(member => {
+                addEditMember(member.is_child === 1, member);
+            });
+
+            // Show modal
+            document.getElementById('edit-family-modal').style.display = 'flex';
+        }
+
+        function closeEditFamilyModal() {
+            document.getElementById('edit-family-modal').style.display = 'none';
+            document.getElementById('edit-family-form').reset();
+        }
+
+        function addEditMember(isChild, data = null) {
+            editMemberCount++;
+            const container = document.getElementById('edit-members-container');
+
+            const memberCard = document.createElement('div');
+            memberCard.className = `member-card ${isChild ? 'child' : ''}`;
+            memberCard.id = `edit-member-${editMemberCount}`;
+
+            memberCard.innerHTML = `
+                <button type="button" class="remove-btn" onclick="removeEditMember(${editMemberCount})">×</button>
+                <h4 style="color: var(--forest-green); margin-bottom: 15px;">
+                    ${isChild ? '👦 Child' : '👨 Adult'}
+                </h4>
+                
+                <div class="form-group">
+                    <label>Name *</label>
+                    <input 
+                        type="text" 
+                        name="edit-member-name-${editMemberCount}" 
+                        value="${data?.name || ''}"
+                        required
+                    >
+                </div>
+
+                <input type="hidden" name="edit-member-is-child-${editMemberCount}" value="${isChild ? '1' : '0'}">
+
+                ${isChild ? `
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input 
+                                type="checkbox" 
+                                name="edit-member-sefton-${editMemberCount}"
+                                ${data?.in_sefton_park ? 'checked' : ''}
+                            >
+                            <span>Attends Sefton Park School</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group" id="edit-sefton-details-${editMemberCount}" style="display: ${data?.in_sefton_park ? 'block' : 'none'};">
+                        <label>Year</label>
+                        <select name="edit-member-year-${editMemberCount}" id="edit-member-year-${editMemberCount}">
+                            <option value="">Select Year</option>
+                            <option value="1" ${data?.year === '1' ? 'selected' : ''}>Year 1</option>
+                            <option value="2" ${data?.year === '2' ? 'selected' : ''}>Year 2</option>
+                            <option value="3" ${data?.year === '3' ? 'selected' : ''}>Year 3</option>
+                            <option value="4" ${data?.year === '4' ? 'selected' : ''}>Year 4</option>
+                            <option value="5" ${data?.year === '5' ? 'selected' : ''}>Year 5</option>
+                            <option value="6" ${data?.year === '6' ? 'selected' : ''}>Year 6</option>
+                        </select>
+
+                        <div id="edit-class-selection-${editMemberCount}" style="display: ${data?.year === '3' ? 'block' : 'none'}; margin-top: 10px;">
+                            <label>Class</label>
+                            <select name="edit-member-class-${editMemberCount}">
+                                <option value="">Select Class</option>
+                                <option value="Baobab" ${data?.class === 'Baobab' ? 'selected' : ''}>Baobab</option>
+                                <option value="Olive" ${data?.class === 'Olive' ? 'selected' : ''}>Olive</option>
+                            </select>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+
+            container.appendChild(memberCard);
+
+            // Add event listeners
+            if (isChild) {
+                const checkbox = document.querySelector(`input[name="edit-member-sefton-${editMemberCount}"]`);
+                checkbox.addEventListener('change', (e) => {
+                    const details = document.getElementById(`edit-sefton-details-${editMemberCount}`);
+                    details.style.display = e.target.checked ? 'block' : 'none';
+                });
+
+                const yearDropdown = document.getElementById(`edit-member-year-${editMemberCount}`);
+                if (yearDropdown) {
+                    yearDropdown.addEventListener('change', (e) => {
+                        const classSelection = document.getElementById(`edit-class-selection-${editMemberCount}`);
+                        classSelection.style.display = e.target.value === '3' ? 'block' : 'none';
+                    });
+                }
+            }
+        }
+
+        function removeEditMember(id) {
+            const member = document.getElementById(`edit-member-${id}`);
+            if (member) member.remove();
+        }
+
+        document.getElementById('edit-family-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const familyId = document.getElementById('edit-family-id').value;
+            const bookingRef = document.getElementById('edit-booking-ref').value;
+            const campingType = formData.get('edit-camping-type');
+            const nights = formData.getAll('edit-nights');
+
+            if (nights.length === 0) {
+                alert('Please select at least one night');
+                return;
+            }
+
+            // Collect members
+            const members = [];
+            const memberCards = document.querySelectorAll('#edit-members-container .member-card');
+
+            memberCards.forEach((card) => {
+                const id = card.id.split('-')[2];
+                const name = formData.get(`edit-member-name-${id}`);
+                const isChild = formData.get(`edit-member-is-child-${id}`) === '1';
+                const inSeftonPark = formData.get(`edit-member-sefton-${id}`) === 'on';
+                const year = formData.get(`edit-member-year-${id}`) || null;
+                const classValue = formData.get(`edit-member-class-${id}`) || null;
+
+                if (name) {
+                    members.push({
+                        name,
+                        is_child: isChild,
+                        in_sefton_park: inSeftonPark,
+                        year,
+                        class: classValue
+                    });
+                }
+            });
+
+            if (members.length === 0) {
+                alert('Please add at least one family member');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/families`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        booking_ref: bookingRef,
+                        members,
+                        camping_type: campingType,
+                        nights
+                    })
+                });
+
+                if (response.ok) {
+                    closeEditFamilyModal();
+                    await loadFamilies();
+                    alert('Family registration updated successfully! 🎉');
+                } else {
+                    alert('Error updating family registration');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating family registration');
+            }
+        });
+
+        async function deleteFamily(accessKey, bookingRef) {
+            if (!confirm(`Are you sure you want to delete the registration for booking reference "${bookingRef}"? This cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                // We need to add a DELETE endpoint on the server
+                const family = families.find(f => f.access_key === accessKey);
+                if (!family) return;
+
+                const response = await fetch(`${API_URL}/families/${family.id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    await loadFamilies();
+                    alert('Family registration deleted successfully');
+                } else {
+                    alert('Error deleting family registration');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting family registration');
+            }
+        }
+
+        async function deleteActivity() {
+            const activityId = document.getElementById('edit-activity-id').value;
+            const activityName = document.getElementById('edit-activity-name').value;
+            
+            if (!confirm(`Are you sure you want to delete "${activityName}"? This will also remove all sign-ups for this activity. This cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/activities/${activityId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    closeEditModal();
+                    await loadAllActivities();
+                    await loadActivitySignups();
+                    alert('Activity deleted successfully');
+                } else {
+                    alert('Error deleting activity');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting activity');
+            }
+        }
+
         document.getElementById('add-activity-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -569,6 +951,7 @@
             const session_time = document.getElementById('activity-time').value;
             const cost = parseFloat(document.getElementById('activity-cost').value) || 0;
             const description = document.getElementById('activity-description').value;
+            const max_participants = parseInt(document.getElementById('activity-max-participants').value) || 0;
 
             try {
                 const response = await fetch(`${API_URL}/activities`, {
@@ -580,7 +963,8 @@
                         name,
                         session_time,
                         cost,
-                        description
+                        description,
+                        max_participants
                     })
                 });
 

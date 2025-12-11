@@ -34,6 +34,9 @@
             <div id="activities-container" class="hidden">
                 <h3 style="color: var(--forest-green); margin-bottom: 20px;">Available Activities</h3>
                 <div id="activities-list"></div>
+                <button class="btn btn-primary btn-block mt-20" onclick="saveAllActivities()" style="margin-top: 30px;">
+                    💾 Update All Activities
+                </button>
             </div>
 
             <div id="my-signups" class="hidden">
@@ -42,13 +45,41 @@
                 <div id="signups-list"></div>
             </div>
         </div>
+
+        <div class="card text-center" id="save-close-section" class="hidden">
+            <button class="btn btn-primary btn-block" onclick="saveAllAndClose()">
+                💾 Save and Close
+            </button>
+        </div>
     </div>
 
-    <script>
-        const API_URL = window.location.hostname === 'localhost'
-            ? 'http://localhost:3001/api'
-            : '/api';
+    <!-- Payment Confirmation Modal -->
+    <div id="payment-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+        <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <h2 style="color: var(--forest-green); margin-bottom: 20px;">💳 Confirm Payment</h2>
+            
+            <div id="payment-details" style="background: var(--light-cream); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <!-- Payment details will be inserted here -->
+            </div>
 
+            <p style="color: var(--earth-brown); margin-bottom: 20px; font-size: 0.9em;">
+                <strong>Note:</strong> This is a test payment flow. In production, you will be redirected to a secure payment provider.
+            </p>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-primary" style="flex: 1;" onclick="confirmPayment()">
+                    ✓ Confirm Payment
+                </button>
+                <button class="btn btn-warning" style="flex: 1;" onclick="closePaymentModal()">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="common.js"></script>
+    <script>
         let accessKey = null;
         let familyData = null;
         let activities = [];
@@ -65,6 +96,7 @@
             await loadFamilyData();
             await loadActivities();
             await loadMySignups();
+            document.getElementById('save-close-section').classList.remove('hidden');
         });
 
         async function loadFamilyData() {
@@ -88,7 +120,7 @@
                 const response = await fetch(`${API_URL}/activities`);
                 if (response.ok) {
                     activities = await response.json();
-                    renderActivities();
+                    // Don't render yet - wait for signups to load first
                 }
             } catch (error) {
                 console.error('Error loading activities:', error);
@@ -101,6 +133,8 @@
                 const response = await fetch(`${API_URL}/activity-signups/family/${accessKey}`);
                 if (response.ok) {
                     mySignups = await response.json();
+                    // Now render activities with pre-selected checkboxes
+                    renderActivities();
                     renderMySignups();
                 }
             } catch (error) {
@@ -139,6 +173,7 @@
                       type="checkbox" 
                       class="activity-child-checkbox"
                       data-activity-id="${activity.id}"
+                      data-activity-cost="${activity.cost}"
                       data-child-name="${child.name}"
                       ${signedUpChildren.includes(child.name) ? 'checked' : ''}
                     >
@@ -147,28 +182,6 @@
                 `).join('')}
               </div>
             </div>
-
-            <button 
-              class="btn btn-primary btn-small mt-20" 
-              onclick="saveActivitySignup(${activity.id})"
-            >
-              ${existingSignup ? 'Update Sign-up' : 'Sign Up'}
-            </button>
-
-            ${existingSignup && activity.cost > 0 ? `
-              <div style="margin-top: 15px; padding: 15px; background: var(--light-cream); border-radius: 10px;">
-                <strong>Payment Status:</strong> 
-                <span class="paid-badge ${existingSignup.paid ? 'yes' : 'no'}">
-                  ${existingSignup.paid ? 'Paid ✓' : 'Not Paid'}
-                </span>
-                ${!existingSignup.paid ? `
-                  <br><br>
-                  <a href="#" class="btn btn-warning btn-small" onclick="alert('Payment link: [To be configured by organizers]'); return false;">
-                    Pay Now (External Link)
-                  </a>
-                ` : ''}
-              </div>
-            ` : ''}
           </div>
         `;
             }).join('');
@@ -178,13 +191,26 @@
             const container = document.getElementById('signups-list');
 
             if (mySignups.length === 0) {
-                container.innerHTML = '<p style="color: var(--earth-brown);">No activities signed up yet.</p>';
+                container.innerHTML = '<p style="color: var(--earth-brown);">No activities signed up yet.</p><div id="payment-status-section"></div>';
                 return;
             }
 
-            container.innerHTML = `
-        <div style="background: var(--light-cream); padding: 20px; border-radius: 15px;">
-          ${mySignups.map(signup => `
+            // Display current signups
+            const signupsList = mySignups.filter(s => s.children.length > 0).map(signup => {
+              const activityTotal = signup.cost * signup.children.length;
+              const paidAmount = signup.paid ? signup.amount_paid : 0;
+              let paymentColor = 'var(--sunset-orange)'; // red/unpaid
+              let paymentStatus = 'Unpaid';
+              
+              if (paidAmount >= activityTotal && activityTotal > 0) {
+                paymentColor = 'var(--bright-green)'; // green/fully paid
+                paymentStatus = 'Paid ✓';
+              } else if (paidAmount > 0 && paidAmount < activityTotal) {
+                paymentColor = '#FFA500'; // yellow/partially paid
+                paymentStatus = 'Partially Paid';
+              }
+              
+              return `
             <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 2px solid white;">
               <strong style="color: var(--forest-green);">${signup.activity_name}</strong>
               <br>
@@ -193,66 +219,279 @@
               <strong>Children:</strong> ${signup.children.join(', ')}
               ${signup.cost > 0 ? `
                 <br>
-                <strong>Cost:</strong> £${signup.cost.toFixed(2)} × ${signup.children.length} = £${(signup.cost * signup.children.length).toFixed(2)}
+                <strong>Cost:</strong> £${signup.cost.toFixed(2)} × ${signup.children.length} = £${activityTotal.toFixed(2)}
                 <br>
-                <span class="paid-badge ${signup.paid ? 'yes' : 'no'}">
-                  ${signup.paid ? 'Paid ✓' : 'Not Paid'}
-                </span>
+                <span style="color: ${paymentColor}; font-weight: bold;">${paymentStatus}${paidAmount > 0 ? ` (£${paidAmount.toFixed(2)})` : ''}</span>
               ` : ''}
             </div>
-          `).join('')}
-        </div>
+          `;
+            }).join('');
+
+            container.innerHTML = `
+        ${signupsList ? `<div style="background: var(--light-cream); padding: 20px; border-radius: 15px;">
+          ${signupsList}
+        </div>` : '<p style="color: var(--earth-brown);">No activities signed up yet.</p>'}
+        <div id="payment-status-section"></div>
+
       `;
+            
+            renderPaymentSection();
         }
 
-        async function saveActivitySignup(activityId) {
-            const checkboxes = document.querySelectorAll(
-                `input[data-activity-id="${activityId}"]:checked`
-            );
+        function renderPaymentSection() {
+            const paymentSection = document.getElementById('payment-status-section');
+            if (!paymentSection) return;
 
-            const selectedChildren = Array.from(checkboxes).map(cb => cb.dataset.childName);
+            // Calculate totals based on saved signups (not checkbox state)
+            const totalDue = mySignups.reduce((sum, signup) => sum + (signup.cost * signup.children.length), 0);
+            const totalPaid = mySignups.filter(s => s.paid).reduce((sum, signup) => sum + signup.amount_paid, 0);
+            const unpaid = totalDue - totalPaid;
 
-            if (selectedChildren.length === 0) {
-                showAlert('Please select at least one child for this activity', 'error');
-                return;
+            // Show payment section if there's anything due OR if they've paid anything (even if now cancelled)
+            if (totalDue > 0 || totalPaid > 0) {
+                paymentSection.innerHTML = `
+          <div style="background: var(--light-cream); padding: 25px; border-radius: 15px; margin-top: 30px; border: 3px solid var(--forest-green);">
+            <h3 style="color: var(--forest-green); margin-bottom: 20px; margin-top: 0;">💳 Payment Status</h3>
+            
+            <div style="display: grid; gap: 15px; margin-bottom: 20px;">
+              <div style="padding: 15px; background: white; border-radius: 10px;">
+                <strong style="color: var(--earth-brown);">Total Due:</strong>
+                <span style="float: right; font-size: 1.2em; color: var(--forest-green);">£${totalDue.toFixed(2)}</span>
+              </div>
+              
+              <div style="padding: 15px; background: white; border-radius: 10px;">
+                <strong style="color: var(--bright-green);">Paid:</strong>
+                <span style="float: right; font-size: 1.2em; color: var(--bright-green);">£${totalPaid.toFixed(2)}</span>
+              </div>
+              
+              <div style="padding: 15px; background: white; border-radius: 10px;">
+                <strong style="color: ${unpaid > 0 ? 'var(--sunset-orange)' : unpaid < 0 ? '#FF6B6B' : 'var(--bright-green)'};">Outstanding:</strong>
+                <span style="float: right; font-size: 1.2em; font-weight: bold; color: ${unpaid > 0 ? 'var(--sunset-orange)' : unpaid < 0 ? '#FF6B6B' : 'var(--bright-green)'};">£${unpaid.toFixed(2)}</span>
+              </div>
+            </div>
+
+            ${unpaid > 0 ? `
+              <button class="btn btn-primary btn-block" onclick="openPaymentModal()">
+                💳 Pay Now (£${unpaid.toFixed(2)})
+              </button>
+            ` : unpaid < 0 ? `
+              <button class="btn btn-block" style="background: #ccc; color: #666; cursor: not-allowed;" disabled>
+                ⚠️ Unable to Cancel Automatically
+              </button>
+              <p style="text-align: center; margin-top: 15px; margin-bottom: 0; color: var(--earth-brown); font-size: 0.95em;">
+                You have overpaid by <strong style="color: #FF6B6B;">£${Math.abs(unpaid).toFixed(2)}</strong>. This may be due to cancelled activities. Please contact an admin on the school camping WhatsApp chat to process your refund.
+              </p>
+            ` : `
+              <div style="text-align: center; padding: 20px; background: var(--bright-green); color: white; border-radius: 10px; font-weight: bold;">
+                ✓ All payments complete!
+              </div>
+            `}
+
+            <p style="text-align: center; margin-top: 20px; margin-bottom: 0; color: var(--earth-brown); font-size: 0.9em;">
+              If you think you've overpaid or have payment questions, please ask on the school camping WhatsApp chat.
+            </p>
+          </div>
+        `;
+            } else {
+                paymentSection.innerHTML = '';
             }
+        }
 
-            try {
-                const response = await fetch(`${API_URL}/activity-signups`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        activity_id: activityId,
-                        access_key: accessKey,
-                        children: selectedChildren
-                    })
-                });
-
-                if (response.ok) {
-                    showAlert('Activity sign-up saved! 🎉', 'success');
-                    await loadMySignups();
-                    renderActivities();
-                } else {
-                    showAlert('Error saving sign-up', 'error');
+        function openPaymentModal() {
+            if (!familyData) return;
+            
+            const unpaidSignups = mySignups.filter(s => {
+                const total = s.cost * s.children.length;
+                const paid = s.paid ? s.amount_paid : 0;
+                return total > paid;
+            });
+            
+            const totalDue = mySignups.reduce((sum, signup) => sum + (signup.cost * signup.children.length), 0);
+            const totalPaid = mySignups.filter(s => s.paid).reduce((sum, signup) => sum + signup.amount_paid, 0);
+            const unpaid = totalDue - totalPaid;
+            
+            const detailsHtml = `
+                <p style="margin-bottom: 15px;">
+                    <strong>Booking Reference ${familyData.booking_ref}</strong> is attempting to pay <strong style="color: var(--forest-green);">£${unpaid.toFixed(2)}</strong> for the following items:
+                </p>
+                <div style="background: white; padding: 15px; border-radius: 10px;">
+                    ${unpaidSignups.map(signup => {
+                        const total = signup.cost * signup.children.length;
+                        const paid = signup.paid ? signup.amount_paid : 0;
+                        const owing = total - paid;
+                        return `
+                            <div style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee;">
+                                <strong>${signup.activity_name}</strong><br>
+                                <small>Children: ${signup.children.join(', ')}</small><br>
+                                <span>Amount: £${owing.toFixed(2)}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 2px solid var(--forest-green);">
+                        <strong>Total Payment: £${unpaid.toFixed(2)}</strong>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('payment-details').innerHTML = detailsHtml;
+            document.getElementById('payment-modal').style.display = 'flex';
+        }
+        
+        function closePaymentModal() {
+            document.getElementById('payment-modal').style.display = 'none';
+        }
+        
+        async function confirmPayment() {
+            // Process payment for all unpaid signups
+            const unpaidSignups = mySignups.filter(s => {
+                const total = s.cost * s.children.length;
+                const paid = s.paid ? s.amount_paid : 0;
+                return total > paid;
+            });
+            
+            let allSuccess = true;
+            
+            for (const signup of unpaidSignups) {
+                const total = signup.cost * signup.children.length;
+                const alreadyPaid = signup.paid ? signup.amount_paid : 0;
+                const amountToPay = total - alreadyPaid;
+                
+                try {
+                    const response = await fetch(`${API_URL}/activity-signups/${signup.id}/payment`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            paid: true,
+                            amount_paid: total // Mark as fully paid
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        allSuccess = false;
+                        break;
+                    }
+                } catch (error) {
+                    console.error('Error processing payment:', error);
+                    allSuccess = false;
+                    break;
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert('Error saving sign-up', 'error');
+            }
+            
+            closePaymentModal();
+            
+            if (allSuccess) {
+                showAlert('Payment successful! ✓ Your activities are now marked as paid.', 'success');
+                await loadMySignups();
+            } else {
+                showAlert('Error processing payment. Please try again.', 'error');
             }
         }
 
-        function showAlert(message, type = 'info') {
-            const alertContainer = document.getElementById('alert-container');
-            alertContainer.innerHTML = `
-        <div class="alert alert-${type}">
-          ${message}
-        </div>
-      `;
-            setTimeout(() => {
-                alertContainer.innerHTML = '';
-            }, 5000);
+        async function saveAllActivities() {
+            const activitiesToSave = [];
+            
+            // Collect all activities with their selected children
+            activities.forEach(activity => {
+                const checkboxes = document.querySelectorAll(`input[data-activity-id="${activity.id}"]:checked`);
+                const selectedChildren = Array.from(checkboxes).map(cb => cb.dataset.childName);
+                
+                activitiesToSave.push({
+                    activity_id: activity.id,
+                    children: selectedChildren
+                });
+            });
+
+            // Save all activities
+            let allSuccess = true;
+            for (const activityData of activitiesToSave) {
+                try {
+                    const response = await fetch(`${API_URL}/activity-signups`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            activity_id: activityData.activity_id,
+                            access_key: accessKey,
+                            children: activityData.children
+                        })
+                    });
+
+                    if (!response.ok) {
+                        allSuccess = false;
+                        break;
+                    }
+                } catch (error) {
+                    console.error('Error saving activity:', error);
+                    allSuccess = false;
+                    break;
+                }
+            }
+
+            if (allSuccess) {
+                showAlert('All activities updated successfully! 🎉', 'success');
+                await loadMySignups();
+                renderActivities();
+                // Wait for DOM to update before calculating totals
+                setTimeout(() => {
+                    renderMySignups();
+                }, 0);
+            } else {
+                showAlert('Error updating some activities. Please try again.', 'error');
+            }
+        }
+
+        async function saveAllAndClose() {
+            const activitiesToSave = [];
+            
+            // Collect all activities with their selected children
+            activities.forEach(activity => {
+                const checkboxes = document.querySelectorAll(`input[data-activity-id="${activity.id}"]:checked`);
+                const selectedChildren = Array.from(checkboxes).map(cb => cb.dataset.childName);
+                
+                // Include all activities, even with 0 children (to clear them if previously selected)
+                activitiesToSave.push({
+                    activity_id: activity.id,
+                    children: selectedChildren
+                });
+            });
+
+            // Save all activities
+            let allSuccess = true;
+            for (const activityData of activitiesToSave) {
+                try {
+                    const response = await fetch(`${API_URL}/activity-signups`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            activity_id: activityData.activity_id,
+                            access_key: accessKey,
+                            children: activityData.children
+                        })
+                    });
+
+                    if (!response.ok) {
+                        allSuccess = false;
+                        break;
+                    }
+                } catch (error) {
+                    console.error('Error saving activity:', error);
+                    allSuccess = false;
+                    break;
+                }
+            }
+
+            if (allSuccess) {
+                showAlert('All activities saved successfully! ✓ You can now close this page.', 'success');
+                await loadMySignups();
+                renderMySignups();
+            } else {
+                showAlert('Error saving some activities. Please try again.', 'error');
+            }
         }
     </script>
 </body>
