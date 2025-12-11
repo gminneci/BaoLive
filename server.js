@@ -355,12 +355,33 @@ app.delete('/api/families/:id', (req, res) => {
 
 // Get activities (for parents - only available ones)
 app.get('/api/activities', (req, res) => {
-    db.all('SELECT * FROM activities WHERE available = 1 ORDER BY session_time', [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json(rows);
-    });
+    const { access_key } = req.query;
+    
+    // If access_key provided, show activities that are available OR family is signed up for
+    if (access_key) {
+        const query = `
+            SELECT DISTINCT a.* 
+            FROM activities a
+            LEFT JOIN families f ON f.access_key = ?
+            LEFT JOIN activity_signups s ON s.activity_id = a.id AND s.family_id = f.id
+            WHERE a.available = 1 OR s.id IS NOT NULL
+            ORDER BY a.session_time
+        `;
+        db.all(query, [access_key], (err, rows) => {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json(rows);
+        });
+    } else {
+        // No access_key: only show available activities
+        db.all('SELECT * FROM activities WHERE available = 1 ORDER BY session_time', [], (err, rows) => {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json(rows);
+        });
+    }
 });
 
 // Get all activities including unavailable (admin only)

@@ -117,7 +117,8 @@
 
         async function loadActivities() {
             try {
-                const response = await fetch(`${API_URL}/activities`);
+                // Pass access_key so we see activities we're signed up for, even if full
+                const response = await fetch(`${API_URL}/activities?access_key=${accessKey}`);
                 if (response.ok) {
                     activities = await response.json();
                     // Don't render yet - wait for signups to load first
