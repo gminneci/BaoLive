@@ -381,6 +381,7 @@
                     showAlert(`Payment successful! ✓ £${totalAmount.toFixed(2)} has been recorded.`, 'success');
                     await loadMySignups();
                     await loadFamilyData(); // Refresh family data to show updated balance
+                    renderMySignups(); // Re-render to show updated payment status
                 } else {
                     const errorData = await response.json();
                     showAlert(`Error processing payment: ${errorData.error || 'Unknown error'}`, 'error');
