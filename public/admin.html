@@ -60,8 +60,18 @@
             </div>
         </div>
 
-        <!-- Add New Activity -->
-        <div class="card">
+        <!-- Add Activity Button -->
+        <div class="card text-center">
+            <button class="btn btn-secondary btn-block" onclick="openAddModal()">
+                ➕ Add New Activity
+            </button>
+        </div>
+    </div>
+
+    <!-- Add Activity Modal -->
+    <div id="add-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+        <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
             <h2 style="color: var(--leaf-green); margin-bottom: 20px;">Add New Activity</h2>
 
             <form id="add-activity-form">
@@ -85,14 +95,18 @@
                     <textarea id="activity-description" rows="3"></textarea>
                 </div>
 
-                <button type="submit" class="btn btn-secondary btn-block">Add Activity</button>
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" class="btn btn-secondary" style="flex: 1;">Add Activity</button>
+                    <button type="button" class="btn btn-warning" style="flex: 1;"
+                        onclick="closeAddModal()">Cancel</button>
+                </div>
             </form>
         </div>
     </div>
 
     <!-- Edit Activity Modal -->
-    <div id="edit-modal" class="hidden"
-        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+    <div id="edit-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
         <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
             <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Activity</h2>
 
@@ -265,12 +279,22 @@
             document.getElementById('edit-activity-description').value = activity.description || '';
 
             // Show the modal
-            document.getElementById('edit-modal').classList.remove('hidden');
+            const modal = document.getElementById('edit-modal');
+            modal.style.display = 'flex';
         }
 
         function closeEditModal() {
-            document.getElementById('edit-modal').classList.add('hidden');
+            document.getElementById('edit-modal').style.display = 'none';
             document.getElementById('edit-activity-form').reset();
+        }
+
+        function openAddModal() {
+            document.getElementById('add-modal').style.display = 'flex';
+        }
+
+        function closeAddModal() {
+            document.getElementById('add-modal').style.display = 'none';
+            document.getElementById('add-activity-form').reset();
         }
 
         // Handle edit form submission
@@ -561,9 +585,9 @@
                 });
 
                 if (response.ok) {
+                    closeAddModal();
+                    await loadAllActivities();
                     alert('Activity added successfully! 🎉');
-                    e.target.reset();
-                    // Optionally reload the page to show the new activity
                 } else {
                     alert('Error adding activity');
                 }
