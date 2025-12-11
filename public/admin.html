@@ -836,9 +836,13 @@
                     <td>${family.nights.join(', ')}</td>
                     <td>
                                             ${seftonChildren.map(c => {
+                                        // If class is specified (Year 3), show only class name
+                                        if (c.class) {
+                                            return `${c.name} (${c.class})`;
+                                        }
+                                        // Otherwise show year
                                         const yearLabel = c.year === 'Reception' ? 'Reception' : `Year ${c.year || '?'}`;
-                                        const classLabel = c.class ? `, ${c.class}` : '';
-                                        return `${c.name} (${yearLabel}${classLabel})`;
+                                        return `${c.name} (${yearLabel})`;
                                 }).join('<br>') || 'None'}
                     </td>
                     <td>
