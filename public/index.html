@@ -7,56 +7,155 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico?v=2">
   <title>Sefton Park Camping Trip 🏕️</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .hero {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .booking-search {
+      max-width: 500px;
+      margin: 0 auto;
+      background: var(--light-cream);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      border: 2px solid var(--forest-green);
+    }
+
+    .admin-link {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 0.85rem;
+      color: var(--slate-grey);
+      text-decoration: none;
+      padding: 5px 10px;
+      border: 1px solid var(--slate-grey);
+      border-radius: 4px;
+    }
+  </style>
 </head>
 
 <body>
-  <div style="position: relative;">
-    <a href="admin.html" style="position: absolute; top: 20px; right: 20px; font-size: 0.85rem; color: var(--slate-grey); text-decoration: none; padding: 5px 10px; border: 1px solid var(--slate-grey); border-radius: 4px;">Admin</a>
-  </div>
-  <div class="container">
+  <div class="container" style="position: relative;">
+    <!-- Admin Link Restored -->
+    <a href="admin.html" class="admin-link">Admin</a>
+
     <header>
-      <h1>🏕️ Sefton Park Camping Trip</h1>
+      <div style="font-size: 4em; margin-bottom: 20px;">🏕️</div>
+      <h1>Sefton Park Camping Trip</h1>
       <p class="subtitle">Baobab & Olive Classes • Year 3</p>
       <p class="subtitle">Mendip Basecamp Adventure</p>
       <p class="subtitle" style="font-weight: 600; color: var(--forest-green);">Dates: 10–12 July 2025</p>
     </header>
 
+    <!-- Welcome Section Restored -->
     <div class="card">
       <h2 style="color: var(--forest-green); margin-bottom: 20px;">Welcome! 🌲</h2>
       <p style="margin-bottom: 20px; line-height: 1.6;">
-        Get ready for the event of the year! Use this app to register your family so that we can book
-        a field or all of us and sign the kids up for activities at Mendip Basecamp. Maybe the adults too?
+        Get ready for the event of the year! Use this app to register your family so that we can organize
+        our group field and sign kids and adults up for activities at Mendip Basecamp or at the pub.
       </p>
 
-      <nav>
-        <a href="access.html" class="btn btn-primary btn-block">🔑 Access My Registration</a>
-        <a href="register.html?new=true" class="btn btn-secondary btn-block">📝 New Family Registration</a>
-        <a href="activities.html" class="btn btn-info btn-block">🎯 Activity Sign-ups</a>
-      </nav>
-    </div>
-
-    <div class="card">
-      <h3 style="color: var(--leaf-green); margin-bottom: 15px;">📋 Important Information</h3>
-      <ul style="line-height: 2; padding-left: 20px;">
-        <li><strong>Book First:</strong> Reserve your spot at <a href="https://mendipbasecamp.com" target="_blank"
+      <h3 style="color: var(--leaf-green); margin-bottom: 15px;">📋 How it works</h3>
+      <ul style="line-height: 2; padding-left: 20px; text-align: left;">
+        <li><strong>Step 1:</strong> Book your spot directly at <a href="https://mendipbasecamp.com" target="_blank"
             style="color: var(--bright-green);">mendipbasecamp.com</a></li>
-        <li><strong>Booking Reference:</strong> You'll receive a reference code after booking</li>
-        <li><strong>Register Here:</strong> Use your booking reference to complete registration</li>
-        <li><strong>Activities:</strong> Sign up for optional activities like tobogganing</li>
-        <li><strong>Questions?:</strong> Contact the trip organizers on WhatsApp</li>
+        <li><strong>Step 2:</strong> Enter your <strong>Booking Reference</strong> below to register or to edit your
+          existing choices.</li>
+        <li><strong>Step 3:</strong> Add your children (Baobab/Olive class) and other family members.</li>
+        <li><strong>Step 4:</strong> Sign up for activities!</li>
       </ul>
     </div>
+
+    <section class="hero">
+      <div class="booking-search">
+        <h3 style="color: var(--forest-green); margin-bottom: 20px;">Start / Edit Registration</h3>
+        <p style="margin-bottom: 20px; color: var(--earth-brown); font-size: 0.9em;">
+          Please enter the reference code from your Mendip Basecamp booking confirmation.
+        </p>
+
+        <form id="booking-form" onsubmit="handleBookingLookup(event)">
+          <div class="form-group">
+            <input type="text" id="booking-ref" placeholder="Booking Reference (e.g. 46e9a)" required
+              style="font-size: 1.2em; text-align: center; letter-spacing: 1px;">
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Continue →</button>
+        </form>
+      </div>
+    </section>
 
     <div class="card text-center">
       <h3 style="color: var(--sunset-orange); margin-bottom: 15px;">🎉 What to Expect</h3>
       <p style="line-height: 1.8;">
         Join us for a fantastic weekend of wholesome outdoor fun! We'll be camping under the stars,
-        enjoying sunny nature walks, campfire stories, and exciting activities. Don't forget to
-        bring your sense of adventure! 🌟 Nah, this is just AI slop. You know what to
-        expect really.
+        enjoying sunny nature walks, campfire stories, and exciting activities. Don't forget
+        bring your sense of adventure! 🌟 Nah, this is just AI slop. You know what to expect really...
       </p>
+      <a href="participants.html" class="btn btn-info" style="margin-top: 20px;">👀 See who's doing what</a>
     </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal"
+      style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+      <div class="card" style="max-width: 400px; text-align: center;">
+        <h3 style="color: var(--forest-green); margin-bottom: 15px;">New Registration?</h3>
+        <p>We couldn't find a registration for reference <strong id="modal-ref"></strong>.</p>
+        <p>Would you like to start a new family registration?</p>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button class="btn btn-primary" style="flex: 1;" onclick="proceedTxNew()">Yes, Create New</button>
+          <button class="btn btn-secondary" style="flex: 1;" onclick="closeModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
   </div>
+
+  <script src="common.js"></script>
+  <script>
+    let currentRef = '';
+
+    async function handleBookingLookup(e) {
+      e.preventDefault();
+      const refInput = document.getElementById('booking-ref');
+      const ref = refInput.value.trim();
+
+      if (!ref) return;
+      currentRef = ref;
+
+      try {
+        const response = await fetch(`${API_URL}/families/check/${ref}`);
+        const data = await response.json();
+
+        if (data.exists) {
+          const familyResp = await fetch(`${API_URL}/families/booking/${ref}`);
+          if (familyResp.ok) {
+            const family = await familyResp.json();
+            localStorage.setItem('accessKey', family.access_key);
+            window.location.href = 'register.html';
+          } else {
+            showAlert('Error accessing registration.', 'error');
+          }
+        } else {
+          // Not found - Show Modal
+          document.getElementById('modal-ref').textContent = ref;
+          document.getElementById('confirm-modal').style.display = 'flex';
+        }
+      } catch (error) {
+        console.error(error);
+        showAlert('Error checking reference.', 'error');
+      }
+    }
+
+    function proceedTxNew() {
+      window.location.href = `register.html?new=true&ref=${encodeURIComponent(currentRef)}`;
+    }
+
+    function closeModal() {
+      document.getElementById('confirm-modal').style.display = 'none';
+    }
+  </script>
 </body>
 
 </html>

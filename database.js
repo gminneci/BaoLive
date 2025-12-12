@@ -20,16 +20,14 @@ function initDatabase() {
       )
     `);
 
-    // Family members table
+    // Family members table - Simplified Schema
     db.run(`
       CREATE TABLE IF NOT EXISTS family_members (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         family_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         is_child INTEGER NOT NULL,
-        in_sefton_park INTEGER DEFAULT 0,
-        year TEXT,
-        class TEXT,
+        class TEXT, -- Only for children: Baobab, Olive, or Other
         FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE
       )
     `);
@@ -48,11 +46,6 @@ function initDatabase() {
       )
     `);
 
-    // Add max_participants column if it doesn't exist (for existing databases)
-    db.run(`ALTER TABLE activities ADD COLUMN max_participants INTEGER DEFAULT 0`, (err) => {
-      // Ignore error if column already exists
-    });
-
     // Activity signups table
     db.run(`
       CREATE TABLE IF NOT EXISTS activity_signups (
@@ -66,78 +59,32 @@ function initDatabase() {
       )
     `);
 
-      // Payments table - tracks all payments at family level
-      db.run(`
-        CREATE TABLE IF NOT EXISTS payments (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          family_id INTEGER NOT NULL,
-          amount REAL NOT NULL,
-          payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-          notes TEXT,
-          cancelled INTEGER DEFAULT 0,
-          FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE
-        )
-      `);
-
-      // Migration: Remove old payment columns from activity_signups if they exist
-      db.get("PRAGMA table_info(activity_signups)", (err, info) => {
-        if (!err && info) {
-          // Check if old payment columns exist
-          db.all("PRAGMA table_info(activity_signups)", (err, columns) => {
-            const hasPaidColumn = columns && columns.some(col => col.name === 'paid');
-            
-            if (hasPaidColumn) {
-              console.log('Migrating activity_signups table to remove payment columns...');
-              
-              // Create new table without payment columns
-              db.run(`
-                CREATE TABLE activity_signups_new (
-                  id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  activity_id INTEGER NOT NULL,
-                  family_id INTEGER NOT NULL,
-                  children TEXT NOT NULL,
-                  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                  FOREIGN KEY (activity_id) REFERENCES activities(id) ON DELETE CASCADE,
-                  FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE
-                )
-              `, (createErr) => {
-                if (!createErr) {
-                  // Copy data without payment columns
-                  db.run(`INSERT INTO activity_signups_new (id, activity_id, family_id, children, created_at)
-                          SELECT id, activity_id, family_id, children, created_at FROM activity_signups`, (copyErr) => {
-                    if (!copyErr) {
-                      db.run(`DROP TABLE activity_signups`, (dropErr) => {
-                        if (!dropErr) {
-                          db.run(`ALTER TABLE activity_signups_new RENAME TO activity_signups`, (renameErr) => {
-                            if (!renameErr) {
-                              console.log('Migration completed: payment columns removed from activity_signups');
-                            }
-                          });
-                        }
-                      });
-                    }
-                  });
-                }
-              });
-            }
-          });
-        }
-      });
-
-      // Add cancelled column to payments if it doesn't exist
-      db.run(`ALTER TABLE payments ADD COLUMN cancelled INTEGER DEFAULT 0`, (err) => {
-        // Ignore error if column already exists
-        if (!err) {
-          console.log('Migration completed: added cancelled column to payments');
-        }
-      });
-
-    // Insert sample activity (only Tobogganing)
+    // Payments table
     db.run(`
-      INSERT OR IGNORE INTO activities (id, name, session_time, cost, description, available)
-      VALUES 
-        (1, 'Tobogganing', 'Saturday 10:00 AM', 5.00, 'Fun tobogganing session on the slopes', 1)
+      CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        family_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        notes TEXT,
+        cancelled INTEGER DEFAULT 0,
+        FOREIGN KEY (family_id) REFERENCES families(id) ON DELETE CASCADE
+      )
     `);
+
+    // Insert sample activities if empty
+    db.get('SELECT count(*) as count FROM activities', (err, row) => {
+      if (!err && row.count === 0) {
+        db.run(`
+              INSERT INTO activities (name, session_time, cost, description, available)
+              VALUES 
+                ('Tobogganing', 'Saturday 10:00 AM', 5.00, 'Fun tobogganing session on the slopes', 1),
+                ('Archery', 'Saturday 2:00 PM', 8.00, 'Learn to shoot arrows like a pro', 1),
+                ('Nature Walk', 'Friday 4:00 PM', 0.00, 'Guided walk through the woods', 1),
+                ('Campfire Stories', 'Friday 7:00 PM', 0.00, 'Stories and marshmallows by the fire', 1)
+            `);
+      }
+    });
 
     console.log('Database initialized successfully');
   });

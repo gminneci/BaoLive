@@ -20,349 +20,353 @@
             <a href="index.html" class="btn btn-info btn-small">← Back to Home</a>
         </nav>
 
-            <!-- Tabs -->
+        <!-- Tabs -->
+        <div class="card">
+            <div
+                style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--light-cream); flex-wrap: wrap;">
+                <button class="tab-button active" onclick="switchTab('families')" id="tab-families">
+                    👨‍👩‍👧‍👦 Families
+                </button>
+                <button class="tab-button" onclick="switchTab('activities')" id="tab-activities">
+                    🎯 Activities
+                </button>
+                <button class="tab-button" onclick="switchTab('signups')" id="tab-signups">
+                    📝 Sign-ups
+                </button>
+                <button class="tab-button" onclick="switchTab('payments')" id="tab-payments">
+                    💰 Payments
+                </button>
+            </div>
+        </div>
+
+        <!-- Tab: Family Registrations -->
+        <div class="tab-content" id="content-families">
             <div class="card">
-                <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid var(--light-cream);">
-                    <button class="tab-button active" onclick="switchTab('families')" id="tab-families">
-                        👨‍👩‍👧‍👦 Families
-                    </button>
-                    <button class="tab-button" onclick="switchTab('activities')" id="tab-activities">
-                        🎯 Activities
-                    </button>
-                    <button class="tab-button" onclick="switchTab('signups')" id="tab-signups">
-                        📝 Sign-ups
-                    </button>
-                    <button class="tab-button" onclick="switchTab('payments')" id="tab-payments">
-                        💰 Payments
+                <div class="flex-between mb-20">
+                    <h2 style="color: var(--forest-green);">Family Registrations</h2>
+                    <button class="btn btn-primary btn-small" onclick="exportFamilies()">
+                        📋 Copy CSV
                     </button>
                 </div>
-            </div>
 
-            <!-- Tab: Family Registrations -->
-            <div class="tab-content" id="content-families">
-        <div class="card">
-            <div class="flex-between mb-20">
-                <h2 style="color: var(--forest-green);">Family Registrations</h2>
-                <button class="btn btn-primary btn-small" onclick="exportFamilies()">
-                    📋 Copy CSV
-                </button>
-            </div>
-
-            <div id="families-container">
-                <div class="spinner"></div>
+                <div id="families-container">
+                    <div class="spinner"></div>
+                </div>
             </div>
         </div>
-            </div>
 
-            <!-- Tab: Manage Activities -->
-            <div class="tab-content" id="content-activities" style="display: none;">
-        <div class="card">
-            <div class="flex-between mb-20">
-                <h2 style="color: var(--leaf-green); margin: 0;">Manage Activities</h2>
-                <button class="btn btn-secondary btn-small" onclick="openAddModal()">
-                    ➕ Add Activity
-                </button>
-            </div>
-            <p style="color: var(--earth-brown); margin-bottom: 20px;">
-                Toggle which activities are available for parents to sign up for. Only "Available" activities will be
-                shown to parents.
-            </p>
-            <div id="manage-activities-container">
-                <div class="spinner"></div>
+        <!-- Tab: Manage Activities -->
+        <div class="tab-content" id="content-activities" style="display: none;">
+            <div class="card">
+                <div class="flex-between mb-20">
+                    <h2 style="color: var(--leaf-green); margin: 0;">Manage Activities</h2>
+                    <button class="btn btn-secondary btn-small" onclick="openAddModal()">
+                        ➕ Add Activity
+                    </button>
+                </div>
+                <p style="color: var(--earth-brown); margin-bottom: 20px;">
+                    Toggle which activities are available for parents to sign up for. Only "Available" activities will
+                    be
+                    shown to parents.
+                </p>
+                <div id="manage-activities-container">
+                    <div class="spinner"></div>
+                </div>
             </div>
         </div>
-            </div>
 
-            <!-- Tab: Activity Sign-ups -->
-            <div class="tab-content" id="content-signups" style="display: none;">
-        <div class="card">
-            <div class="flex-between mb-20">
-                <h2 style="color: var(--sunset-orange);">Activity Sign-ups</h2>
-                <button class="btn btn-primary btn-small" onclick="exportActivities()">
-                    📋 Copy CSV
-                </button>
-            </div>
+        <!-- Tab: Activity Sign-ups -->
+        <div class="tab-content" id="content-signups" style="display: none;">
+            <div class="card">
+                <div class="flex-between mb-20">
+                    <h2 style="color: var(--sunset-orange);">Activity Sign-ups</h2>
+                    <button class="btn btn-primary btn-small" onclick="exportActivities()">
+                        📋 Copy CSV
+                    </button>
+                </div>
 
-            <div id="activities-container">
-                <div class="spinner"></div>
+                <div id="activities-container">
+                    <div class="spinner"></div>
+                </div>
             </div>
         </div>
-    </div>
 
-            <!-- Tab: Payments -->
-            <div class="tab-content" id="content-payments" style="display: none;">
-                <div class="card">
-                    <div class="flex-between mb-20">
-                        <h2 style="color: var(--forest-green);">Transactions</h2>
+        <!-- Tab: Payments -->
+        <div class="tab-content" id="content-payments" style="display: none;">
+            <div class="card">
+                <div class="flex-between mb-20">
+                    <h2 style="color: var(--forest-green);">Transactions</h2>
+                </div>
+                <p style="color: var(--earth-brown); margin-bottom: 20px;">
+                    All payments are tracked at family level.
+                </p>
+                <div id="payments-container">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Activity Modal -->
+        <div id="add-modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+            <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                <h2 style="color: var(--leaf-green); margin-bottom: 20px;">Add New Activity</h2>
+
+                <form id="add-activity-form">
+                    <div class="form-group">
+                        <label>Activity Name *</label>
+                        <input type="text" id="activity-name" required>
                     </div>
-                    <p style="color: var(--earth-brown); margin-bottom: 20px;">
-                        All payments are tracked at family level.
-                    </p>
-                    <div id="payments-container">
-                        <div class="spinner"></div>
+
+                    <div class="form-group">
+                        <label>Session Time *</label>
+                        <input type="text" id="activity-time" placeholder="e.g., Saturday 10:00 AM" required>
                     </div>
-                </div>
+
+                    <div class="form-group">
+                        <label>Cost (£)</label>
+                        <input type="number" id="activity-cost" step="0.01" min="0" value="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="activity-description" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Max Participants</label>
+                        <input type="number" id="activity-max-participants" min="0" value="0">
+                        <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
+                            Set to 0 for unlimited participants. Activity becomes unavailable when full.
+                        </small>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-secondary" style="flex: 1;">Add Activity</button>
+                        <button type="button" class="btn btn-warning" style="flex: 1;"
+                            onclick="closeAddModal()">Cancel</button>
+                    </div>
+                </form>
             </div>
-
-    <!-- Add Activity Modal -->
-    <div id="add-modal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
-        <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
-            <h2 style="color: var(--leaf-green); margin-bottom: 20px;">Add New Activity</h2>
-
-            <form id="add-activity-form">
-                <div class="form-group">
-                    <label>Activity Name *</label>
-                    <input type="text" id="activity-name" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Session Time *</label>
-                    <input type="text" id="activity-time" placeholder="e.g., Saturday 10:00 AM" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Cost (£)</label>
-                    <input type="number" id="activity-cost" step="0.01" min="0" value="0">
-                </div>
-
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="activity-description" rows="3"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label>Max Participants</label>
-                    <input type="number" id="activity-max-participants" min="0" value="0">
-                    <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
-                        Set to 0 for unlimited participants. Activity becomes unavailable when full.
-                    </small>
-                </div>
-
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-secondary" style="flex: 1;">Add Activity</button>
-                    <button type="button" class="btn btn-warning" style="flex: 1;"
-                        onclick="closeAddModal()">Cancel</button>
-                </div>
-            </form>
         </div>
-    </div>
 
-    <!-- Edit Family Modal -->
-    <div id="edit-family-modal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; overflow-y: auto;">
-        <div class="card" style="max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; margin: 20px;">
-            <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Family Registration</h2>
+        <!-- Edit Family Modal -->
+        <div id="edit-family-modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; overflow-y: auto;">
+            <div class="card" style="max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; margin: 20px;">
+                <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Family Registration</h2>
 
-            <form id="edit-family-form">
-                <input type="hidden" id="edit-family-id">
-                <input type="hidden" id="edit-family-access-key">
+                <form id="edit-family-form">
+                    <input type="hidden" id="edit-family-id">
+                    <input type="hidden" id="edit-family-access-key">
 
-                <div class="form-group">
-                    <label>Booking Reference *</label>
-                    <input type="text" id="edit-booking-ref" required readonly style="background: #f0f0f0;">
-                </div>
-
-                <div class="form-group">
-                    <label>Camping Type *</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="radio" name="edit-camping-type" value="tent" required>
-                            <span>⛺ Tent</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="radio" name="edit-camping-type" value="campervan">
-                            <span>🚐 Campervan</span>
-                        </label>
+                    <div class="form-group">
+                        <label>Booking Reference *</label>
+                        <input type="text" id="edit-booking-ref" required readonly style="background: #f0f0f0;">
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label>Which Night(s)? *</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="edit-nights" value="Friday">
-                            <span>Friday Night</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="edit-nights" value="Saturday">
-                            <span>Saturday Night</span>
-                        </label>
+                    <div class="form-group">
+                        <label>Camping Type *</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="radio" name="edit-camping-type" value="tent" required>
+                                <span>⛺ Tent</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="radio" name="edit-camping-type" value="campervan">
+                                <span>🚐 Campervan</span>
+                            </label>
+                        </div>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label>Family Members</label>
-                    <div id="edit-members-container"></div>
-                    <button type="button" class="btn btn-secondary btn-small mt-20" onclick="addEditMember(true)">
-                        + Add Child
-                    </button>
-                    <button type="button" class="btn btn-info btn-small mt-20" onclick="addEditMember(false)">
-                        + Add Adult
-                    </button>
-                </div>
+                    <div class="form-group">
+                        <label>Which Night(s)? *</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="edit-nights" value="Friday">
+                                <span>Friday Night</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="edit-nights" value="Saturday">
+                                <span>Saturday Night</span>
+                            </label>
+                        </div>
+                    </div>
 
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
-                    <button type="button" class="btn btn-warning" style="flex: 1;" onclick="closeEditFamilyModal()">Cancel</button>
-                </div>
-            </form>
+                    <div class="form-group">
+                        <label>Family Members</label>
+                        <div id="edit-members-container"></div>
+                        <button type="button" class="btn btn-secondary btn-small mt-20" onclick="addEditMember(true)">
+                            + Add Child
+                        </button>
+                        <button type="button" class="btn btn-info btn-small mt-20" onclick="addEditMember(false)">
+                            + Add Adult
+                        </button>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                        <button type="button" class="btn btn-warning" style="flex: 1;"
+                            onclick="closeEditFamilyModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
 
-    <!-- Edit Activity Modal -->
-    <div id="edit-modal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
-        <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
-            <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Activity</h2>
+        <!-- Edit Activity Modal -->
+        <div id="edit-modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+            <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Activity</h2>
 
-            <form id="edit-activity-form">
-                <input type="hidden" id="edit-activity-id">
+                <form id="edit-activity-form">
+                    <input type="hidden" id="edit-activity-id">
 
-                <div class="form-group">
-                    <label>Activity Name *</label>
-                    <input type="text" id="edit-activity-name" required>
-                </div>
+                    <div class="form-group">
+                        <label>Activity Name *</label>
+                        <input type="text" id="edit-activity-name" required>
+                    </div>
 
-                <div class="form-group">
-                    <label>Session Time *</label>
-                    <input type="text" id="edit-activity-time" placeholder="e.g., Saturday 10:00 AM" required>
-                </div>
+                    <div class="form-group">
+                        <label>Session Time *</label>
+                        <input type="text" id="edit-activity-time" placeholder="e.g., Saturday 10:00 AM" required>
+                    </div>
 
-                <div class="form-group">
-                    <label>Cost (£)</label>
-                    <input type="number" id="edit-activity-cost" step="0.01" min="0" value="0">
-                </div>
+                    <div class="form-group">
+                        <label>Cost (£)</label>
+                        <input type="number" id="edit-activity-cost" step="0.01" min="0" value="0">
+                    </div>
 
-                <div class="form-group">
-                    <label>Description</label>
-                    <textarea id="edit-activity-description" rows="3"></textarea>
-                </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="edit-activity-description" rows="3"></textarea>
+                    </div>
 
-                <div class="form-group">
-                    <label>Max Participants</label>
-                    <input type="number" id="edit-activity-max-participants" min="0" value="0">
-                    <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
-                        Set to 0 for unlimited participants. Activity becomes unavailable when full.
-                    </small>
-                </div>
+                    <div class="form-group">
+                        <label>Max Participants</label>
+                        <input type="number" id="edit-activity-max-participants" min="0" value="0">
+                        <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
+                            Set to 0 for unlimited participants. Activity becomes unavailable when full.
+                        </small>
+                    </div>
 
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
-                    <button type="button" class="btn btn-warning" style="flex: 1;"
-                        onclick="closeEditModal()">Cancel</button>
-                </div>
-                
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #eee;">
-                    <button type="button" class="btn btn-warning btn-block" onclick="deleteActivity()">
-                        🗑️ Delete Activity
-                    </button>
-                </div>
-            </form>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                        <button type="button" class="btn btn-warning" style="flex: 1;"
+                            onclick="closeEditModal()">Cancel</button>
+                    </div>
+
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #eee;">
+                        <button type="button" class="btn btn-warning btn-block" onclick="deleteActivity()">
+                            🗑️ Delete Activity
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
 
-    <!-- Edit Payment Modal -->
-    <div id="edit-payment-modal"
-        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
-        <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
-            <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Payment</h2>
+        <!-- Edit Payment Modal -->
+        <div id="edit-payment-modal"
+            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+            <div class="card" style="max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                <h2 style="color: var(--forest-green); margin-bottom: 20px;">Edit Payment</h2>
 
-            <form id="edit-payment-form">
-                <input type="hidden" id="edit-payment-id">
+                <form id="edit-payment-form">
+                    <input type="hidden" id="edit-payment-id">
 
-                <div class="form-group">
-                    <label>Payment Date *</label>
-                    <input type="date" id="edit-payment-date" required>
-                </div>
+                    <div class="form-group">
+                        <label>Payment Date *</label>
+                        <input type="date" id="edit-payment-date" required>
+                    </div>
 
-                <div class="form-group">
-                    <label>Amount (£) *</label>
-                    <input type="number" id="edit-payment-amount" step="0.01" min="0" required>
-                </div>
+                    <div class="form-group">
+                        <label>Amount (£) *</label>
+                        <input type="number" id="edit-payment-amount" step="0.01" min="0" required>
+                    </div>
 
-                <div class="form-group">
-                    <label>Notes</label>
-                    <textarea id="edit-payment-notes" rows="3" placeholder="Optional notes about this payment"></textarea>
-                </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="edit-payment-notes" rows="3"
+                            placeholder="Optional notes about this payment"></textarea>
+                    </div>
 
-                <div style="display: flex; gap: 10px;">
-                    <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
-                    <button type="button" class="btn btn-warning" style="flex: 1;"
-                        onclick="closeEditPaymentModal()">Cancel</button>
-                </div>
-            </form>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+                        <button type="button" class="btn btn-warning" style="flex: 1;"
+                            onclick="closeEditPaymentModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
 
-    <script src="common.js"></script>
-    <script>
-        let families = [];
-        let activitySignups = [];
-        let allActivities = [];
-        let payments = [];
-        
-        // Sorting state
-        let sortState = {
-            activities: { column: null, ascending: true },
-            families: { column: null, ascending: true },
-            signups: { column: null, ascending: true }
-        };
+        <script src="common.js"></script>
+        <script>
+            let families = [];
+            let activitySignups = [];
+            let allActivities = [];
+            let payments = [];
 
-        // Tab switching
-        function switchTab(tab) {
-            // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
-            document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-            
-            // Show selected tab
-            document.getElementById(`content-${tab}`).style.display = 'block';
-            document.getElementById(`tab-${tab}`).classList.add('active');
-        }
+            // Sorting state
+            let sortState = {
+                activities: { column: null, ascending: true },
+                families: { column: null, ascending: true },
+                signups: { column: null, ascending: true }
+            };
 
-        window.addEventListener('DOMContentLoaded', async () => {
-            await loadFamilies();
-            await loadActivitySignups();
-            await loadAllActivities();
-            await loadPayments();
-        });
+            // Tab switching
+            function switchTab(tab) {
+                // Hide all tabs
+                document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
 
-        async function loadFamilies() {
-            try {
-                families = await fetchJSON(`${API_URL}/families`);
-                renderFamilies();
-            } catch (error) {
-                document.getElementById('families-container').innerHTML = '<p class="alert alert-error">Error loading families</p>';
+                // Show selected tab
+                document.getElementById(`content-${tab}`).style.display = 'block';
+                document.getElementById(`tab-${tab}`).classList.add('active');
             }
-        }
 
-        async function loadAllActivities() {
-            try {
-                allActivities = await fetchJSON(`${API_URL}/activities/all`);
-                renderAllActivities();
-            } catch (error) {
-                document.getElementById('manage-activities-container').innerHTML = '<p class="alert alert-error">Error loading activities</p>';
-            }
-        }
+            window.addEventListener('DOMContentLoaded', async () => {
+                await loadFamilies();
+                await loadActivitySignups();
+                await loadAllActivities();
+                await loadPayments();
+            });
 
-        async function loadPayments() {
-            try {
-                payments = await fetchJSON(`${API_URL}/payments`);
-                renderPayments();
-            } catch (error) {
-                document.getElementById('payments-container').innerHTML = '<p class="alert alert-error">Error loading payments</p>';
+            async function loadFamilies() {
+                try {
+                    families = await fetchJSON(`${API_URL}/families`);
+                    renderFamilies();
+                } catch (error) {
+                    document.getElementById('families-container').innerHTML = '<p class="alert alert-error">Error loading families</p>';
+                }
             }
-        }
 
-        function renderPayments() {
-            const container = document.getElementById('payments-container');
-            
-            if (payments.length === 0) {
-                container.innerHTML = '<p>No payment transactions yet.</p>';
-                return;
+            async function loadAllActivities() {
+                try {
+                    allActivities = await fetchJSON(`${API_URL}/activities/all`);
+                    renderAllActivities();
+                } catch (error) {
+                    document.getElementById('manage-activities-container').innerHTML = '<p class="alert alert-error">Error loading activities</p>';
+                }
             }
-            
-            container.innerHTML = `
+
+            async function loadPayments() {
+                try {
+                    payments = await fetchJSON(`${API_URL}/payments`);
+                    renderPayments();
+                } catch (error) {
+                    document.getElementById('payments-container').innerHTML = '<p class="alert alert-error">Error loading payments</p>';
+                }
+            }
+
+            function renderPayments() {
+                const container = document.getElementById('payments-container');
+
+                if (payments.length === 0) {
+                    container.innerHTML = '<p>No payment transactions yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
                 <div style="overflow-x: auto;">
                     <table>
                         <thead>
@@ -376,9 +380,9 @@
                         </thead>
                         <tbody>
                             ${payments.map(payment => {
-                                console.log('Payment:', payment.id, 'cancelled:', payment.cancelled, 'type:', typeof payment.cancelled);
-                                const isCancelled = payment.cancelled == 1 || payment.cancelled === true;
-                                return `
+                    console.log('Payment:', payment.id, 'cancelled:', payment.cancelled, 'type:', typeof payment.cancelled);
+                    const isCancelled = payment.cancelled == 1 || payment.cancelled === true;
+                    return `
                                 <tr style="${isCancelled ? 'opacity: 0.5;' : ''}">
                                     <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}">${new Date(payment.payment_date).toLocaleDateString()}</td>
                                     <td style="${isCancelled ? 'text-decoration: line-through; color: #999;' : ''}"><strong>${payment.booking_ref}</strong></td>
@@ -406,167 +410,167 @@
                     </span>
                 </p>
             `;
-        }
-
-        function editPayment(id, date, amount, notes) {
-            document.getElementById('edit-payment-id').value = id;
-            // Format date for HTML date input (YYYY-MM-DD)
-            const dateObj = new Date(date);
-            const formattedDate = dateObj.toISOString().split('T')[0];
-            document.getElementById('edit-payment-date').value = formattedDate;
-            document.getElementById('edit-payment-amount').value = amount;
-            document.getElementById('edit-payment-notes').value = notes === '-' ? '' : notes;
-            document.getElementById('edit-payment-modal').style.display = 'flex';
-        }
-
-        function closeEditPaymentModal() {
-            document.getElementById('edit-payment-modal').style.display = 'none';
-            document.getElementById('edit-payment-form').reset();
-        }
-
-        async function voidPayment(id) {
-            if (!confirm('Are you sure you want to VOID this payment?\n\nThis will mark the payment as cancelled and exclude it from balance calculations, but keep it in the audit trail.')) {
-                return;
             }
-            
-            try {
-                const response = await fetch(`${API_URL}/payments/${id}/void`, { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (response.ok) {
-                    showAlert('Payment voided successfully', 'success');
-                    // Force reload all data
-                    await Promise.all([
-                        loadPayments(),
-                        loadFamilies(),
-                        loadActivitySignups()
-                    ]);
-                    // Re-render signups with updated family data
-                    renderActivitySignups();
-                } else {
+
+            function editPayment(id, date, amount, notes) {
+                document.getElementById('edit-payment-id').value = id;
+                // Format date for HTML date input (YYYY-MM-DD)
+                const dateObj = new Date(date);
+                const formattedDate = dateObj.toISOString().split('T')[0];
+                document.getElementById('edit-payment-date').value = formattedDate;
+                document.getElementById('edit-payment-amount').value = amount;
+                document.getElementById('edit-payment-notes').value = notes === '-' ? '' : notes;
+                document.getElementById('edit-payment-modal').style.display = 'flex';
+            }
+
+            function closeEditPaymentModal() {
+                document.getElementById('edit-payment-modal').style.display = 'none';
+                document.getElementById('edit-payment-form').reset();
+            }
+
+            async function voidPayment(id) {
+                if (!confirm('Are you sure you want to VOID this payment?\n\nThis will mark the payment as cancelled and exclude it from balance calculations, but keep it in the audit trail.')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_URL}/payments/${id}/void`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (response.ok) {
+                        showAlert('Payment voided successfully', 'success');
+                        // Force reload all data
+                        await Promise.all([
+                            loadPayments(),
+                            loadFamilies(),
+                            loadActivitySignups()
+                        ]);
+                        // Re-render signups with updated family data
+                        renderActivitySignups();
+                    } else {
+                        showAlert('Error voiding payment', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error voiding payment:', error);
                     showAlert('Error voiding payment', 'error');
                 }
-            } catch (error) {
-                console.error('Error voiding payment:', error);
-                showAlert('Error voiding payment', 'error');
             }
-        }
 
-        async function reinstatePayment(id) {
-            if (!confirm('Reinstate this payment?\n\nThis will restore the payment and include it in balance calculations.')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_URL}/payments/${id}/reinstate`, { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (response.ok) {
-                    showAlert('Payment reinstated successfully', 'success');
-                    // Force reload all data
-                    await Promise.all([
-                        loadPayments(),
-                        loadFamilies(),
-                        loadActivitySignups()
-                    ]);
-                    // Re-render signups with updated family data
-                    renderActivitySignups();
-                } else {
+            async function reinstatePayment(id) {
+                if (!confirm('Reinstate this payment?\n\nThis will restore the payment and include it in balance calculations.')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_URL}/payments/${id}/reinstate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (response.ok) {
+                        showAlert('Payment reinstated successfully', 'success');
+                        // Force reload all data
+                        await Promise.all([
+                            loadPayments(),
+                            loadFamilies(),
+                            loadActivitySignups()
+                        ]);
+                        // Re-render signups with updated family data
+                        renderActivitySignups();
+                    } else {
+                        showAlert('Error reinstating payment', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error reinstating payment:', error);
                     showAlert('Error reinstating payment', 'error');
                 }
-            } catch (error) {
-                console.error('Error reinstating payment:', error);
-                showAlert('Error reinstating payment', 'error');
             }
-        }
 
-        async function updatePayment(id, date, amount, notes) {
-            try {
-                const response = await fetch(`${API_URL}/payments/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ payment_date: date, amount, notes })
-                });
-                
-                if (response.ok) {
-                    showAlert('Transaction updated successfully', 'success');
-                    await loadPayments();
-                    await loadFamilies(); // Refresh family balances
-                } else {
+            async function updatePayment(id, date, amount, notes) {
+                try {
+                    const response = await fetch(`${API_URL}/payments/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payment_date: date, amount, notes })
+                    });
+
+                    if (response.ok) {
+                        showAlert('Transaction updated successfully', 'success');
+                        await loadPayments();
+                        await loadFamilies(); // Refresh family balances
+                    } else {
+                        showAlert('Error updating transaction', 'error');
+                    }
+                } catch (error) {
                     showAlert('Error updating transaction', 'error');
                 }
-            } catch (error) {
-                showAlert('Error updating transaction', 'error');
-            }
-        }
-
-        function sortActivities(column) {
-            if (sortState.activities.column === column) {
-                sortState.activities.ascending = !sortState.activities.ascending;
-            } else {
-                sortState.activities.column = column;
-                sortState.activities.ascending = true;
-            }
-            renderAllActivities();
-        }
-
-        function renderAllActivities() {
-            const container = document.getElementById('manage-activities-container');
-
-            if (allActivities.length === 0) {
-                container.innerHTML = '<p>No activities yet. Add one below!</p>';
-                return;
             }
 
-            // Sort activities if a column is selected
-            let sortedActivities = [...allActivities];
-            if (sortState.activities.column) {
-                sortedActivities.sort((a, b) => {
-                    let aVal, bVal;
-                    const signupsA = activitySignups ? activitySignups.filter(s => s.activity_id === a.id) : [];
-                    const signupsB = activitySignups ? activitySignups.filter(s => s.activity_id === b.id) : [];
-                    const participantsA = signupsA.reduce((sum, s) => sum + s.children.length, 0);
-                    const participantsB = signupsB.reduce((sum, s) => sum + s.children.length, 0);
-                    
-                    switch (sortState.activities.column) {
-                        case 'activity':
-                            aVal = a.name.toLowerCase();
-                            bVal = b.name.toLowerCase();
-                            break;
-                        case 'time':
-                            aVal = a.session_time;
-                            bVal = b.session_time;
-                            break;
-                        case 'cost':
-                            aVal = a.cost;
-                            bVal = b.cost;
-                            break;
-                        case 'capacity':
-                            aVal = participantsA;
-                            bVal = participantsB;
-                            break;
-                        case 'status':
-                            aVal = a.available ? 1 : 0;
-                            bVal = b.available ? 1 : 0;
-                            break;
-                    }
-                    
-                    if (aVal < bVal) return sortState.activities.ascending ? -1 : 1;
-                    if (aVal > bVal) return sortState.activities.ascending ? 1 : -1;
-                    return 0;
-                });
-            }
-
-            const getSortIndicator = (column) => {
+            function sortActivities(column) {
                 if (sortState.activities.column === column) {
-                    return sortState.activities.ascending ? ' ↑' : ' ↓';
+                    sortState.activities.ascending = !sortState.activities.ascending;
+                } else {
+                    sortState.activities.column = column;
+                    sortState.activities.ascending = true;
                 }
-                return '';
-            };
+                renderAllActivities();
+            }
 
-            container.innerHTML = `
+            function renderAllActivities() {
+                const container = document.getElementById('manage-activities-container');
+
+                if (allActivities.length === 0) {
+                    container.innerHTML = '<p>No activities yet. Add one below!</p>';
+                    return;
+                }
+
+                // Sort activities if a column is selected
+                let sortedActivities = [...allActivities];
+                if (sortState.activities.column) {
+                    sortedActivities.sort((a, b) => {
+                        let aVal, bVal;
+                        const signupsA = activitySignups ? activitySignups.filter(s => s.activity_id === a.id) : [];
+                        const signupsB = activitySignups ? activitySignups.filter(s => s.activity_id === b.id) : [];
+                        const participantsA = signupsA.reduce((sum, s) => sum + s.children.length, 0);
+                        const participantsB = signupsB.reduce((sum, s) => sum + s.children.length, 0);
+
+                        switch (sortState.activities.column) {
+                            case 'activity':
+                                aVal = a.name.toLowerCase();
+                                bVal = b.name.toLowerCase();
+                                break;
+                            case 'time':
+                                aVal = a.session_time;
+                                bVal = b.session_time;
+                                break;
+                            case 'cost':
+                                aVal = a.cost;
+                                bVal = b.cost;
+                                break;
+                            case 'capacity':
+                                aVal = participantsA;
+                                bVal = participantsB;
+                                break;
+                            case 'status':
+                                aVal = a.available ? 1 : 0;
+                                bVal = b.available ? 1 : 0;
+                                break;
+                        }
+
+                        if (aVal < bVal) return sortState.activities.ascending ? -1 : 1;
+                        if (aVal > bVal) return sortState.activities.ascending ? 1 : -1;
+                        return 0;
+                    });
+                }
+
+                const getSortIndicator = (column) => {
+                    if (sortState.activities.column === column) {
+                        return sortState.activities.ascending ? ' ↑' : ' ↓';
+                    }
+                    return '';
+                };
+
+                container.innerHTML = `
                 <div style="overflow-x: auto;">
                     <table>
                         <thead>
@@ -580,12 +584,12 @@
                         </thead>
                         <tbody>
                             ${sortedActivities.map(activity => {
-                                // Calculate current participants (check if activitySignups is loaded)
-                                const signupsForActivity = activitySignups ? activitySignups.filter(s => s.activity_id === activity.id) : [];
-                                const currentParticipants = signupsForActivity.reduce((sum, s) => sum + s.children.length, 0);
-                                const isFull = activity.max_participants > 0 && currentParticipants >= activity.max_participants;
-                                
-                                return `
+                    // Calculate current participants (check if activitySignups is loaded)
+                    const signupsForActivity = activitySignups ? activitySignups.filter(s => s.activity_id === activity.id) : [];
+                    const currentParticipants = signupsForActivity.reduce((sum, s) => sum + s.children.length, 0);
+                    const isFull = activity.max_participants > 0 && currentParticipants >= activity.max_participants;
+
+                    return `
                                 <tr>
                                     <td>
                                         <a href="#" 
@@ -619,184 +623,184 @@
                     </table>
                 </div>
             `;
-        }
-
-        async function toggleActivityAvailability(activityId, available) {
-            try {
-                const response = await fetch(`${API_URL}/activities/${activityId}/availability`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ available })
-                });
-
-                if (response.ok) {
-                    await loadAllActivities();
-                }
-            } catch (error) {
-                console.error('Error toggling availability:', error);
-                alert('Error updating activity availability');
             }
-        }
 
-        function editActivity(activityId) {
-            const activity = allActivities.find(a => a.id === activityId);
-            if (!activity) return;
+            async function toggleActivityAvailability(activityId, available) {
+                try {
+                    const response = await fetch(`${API_URL}/activities/${activityId}/availability`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ available })
+                    });
 
-            // Populate the edit form
-            document.getElementById('edit-activity-id').value = activity.id;
-            document.getElementById('edit-activity-name').value = activity.name;
-            document.getElementById('edit-activity-time').value = activity.session_time;
-            document.getElementById('edit-activity-cost').value = activity.cost;
-            document.getElementById('edit-activity-description').value = activity.description || '';
-            document.getElementById('edit-activity-max-participants').value = activity.max_participants || 0;
+                    if (response.ok) {
+                        await loadAllActivities();
+                    }
+                } catch (error) {
+                    console.error('Error toggling availability:', error);
+                    alert('Error updating activity availability');
+                }
+            }
 
-            // Show the modal
-            const modal = document.getElementById('edit-modal');
-            modal.style.display = 'flex';
-        }
+            function editActivity(activityId) {
+                const activity = allActivities.find(a => a.id === activityId);
+                if (!activity) return;
 
-        function closeEditModal() {
-            document.getElementById('edit-modal').style.display = 'none';
-            document.getElementById('edit-activity-form').reset();
-        }
+                // Populate the edit form
+                document.getElementById('edit-activity-id').value = activity.id;
+                document.getElementById('edit-activity-name').value = activity.name;
+                document.getElementById('edit-activity-time').value = activity.session_time;
+                document.getElementById('edit-activity-cost').value = activity.cost;
+                document.getElementById('edit-activity-description').value = activity.description || '';
+                document.getElementById('edit-activity-max-participants').value = activity.max_participants || 0;
 
-        function openAddModal() {
-            document.getElementById('add-modal').style.display = 'flex';
-        }
+                // Show the modal
+                const modal = document.getElementById('edit-modal');
+                modal.style.display = 'flex';
+            }
 
-        function closeAddModal() {
-            document.getElementById('add-modal').style.display = 'none';
-            document.getElementById('add-activity-form').reset();
-        }
+            function closeEditModal() {
+                document.getElementById('edit-modal').style.display = 'none';
+                document.getElementById('edit-activity-form').reset();
+            }
 
-        // Handle edit payment form submission
-        document.getElementById('edit-payment-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+            function openAddModal() {
+                document.getElementById('add-modal').style.display = 'flex';
+            }
 
-            const paymentId = document.getElementById('edit-payment-id').value;
-            const date = document.getElementById('edit-payment-date').value;
-            const amount = parseFloat(document.getElementById('edit-payment-amount').value);
-            const notes = document.getElementById('edit-payment-notes').value;
+            function closeAddModal() {
+                document.getElementById('add-modal').style.display = 'none';
+                document.getElementById('add-activity-form').reset();
+            }
 
-            await updatePayment(paymentId, date, amount, notes);
-            closeEditPaymentModal();
-        });
+            // Handle edit payment form submission
+            document.getElementById('edit-payment-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
 
-        // Handle edit form submission
-        document.getElementById('edit-activity-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+                const paymentId = document.getElementById('edit-payment-id').value;
+                const date = document.getElementById('edit-payment-date').value;
+                const amount = parseFloat(document.getElementById('edit-payment-amount').value);
+                const notes = document.getElementById('edit-payment-notes').value;
 
-            const activityId = document.getElementById('edit-activity-id').value;
-            const name = document.getElementById('edit-activity-name').value;
-            const session_time = document.getElementById('edit-activity-time').value;
-            const cost = parseFloat(document.getElementById('edit-activity-cost').value) || 0;
-            const description = document.getElementById('edit-activity-description').value;
-            const max_participants = parseInt(document.getElementById('edit-activity-max-participants').value) || 0;
+                await updatePayment(paymentId, date, amount, notes);
+                closeEditPaymentModal();
+            });
 
-            try {
-                const response = await fetch(`${API_URL}/activities/${activityId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name,
-                        session_time,
-                        cost,
-                        description,
-                        max_participants
-                    })
-                });
+            // Handle edit form submission
+            document.getElementById('edit-activity-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
 
-                if (response.ok) {
-                    closeEditModal();
-                    await loadAllActivities();
-                    alert('Activity updated successfully! 🎉');
-                } else {
+                const activityId = document.getElementById('edit-activity-id').value;
+                const name = document.getElementById('edit-activity-name').value;
+                const session_time = document.getElementById('edit-activity-time').value;
+                const cost = parseFloat(document.getElementById('edit-activity-cost').value) || 0;
+                const description = document.getElementById('edit-activity-description').value;
+                const max_participants = parseInt(document.getElementById('edit-activity-max-participants').value) || 0;
+
+                try {
+                    const response = await fetch(`${API_URL}/activities/${activityId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name,
+                            session_time,
+                            cost,
+                            description,
+                            max_participants
+                        })
+                    });
+
+                    if (response.ok) {
+                        closeEditModal();
+                        await loadAllActivities();
+                        alert('Activity updated successfully! 🎉');
+                    } else {
+                        alert('Error updating activity');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
                     alert('Error updating activity');
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error updating activity');
-            }
-        });
+            });
 
-        async function loadActivitySignups() {
-            try {
-                activitySignups = await fetchJSON(`${API_URL}/activity-signups`);
-                renderActivitySignups();
-            } catch (error) {
-                document.getElementById('activities-container').innerHTML = '<p class="alert alert-error">Error loading activity signups</p>';
-            }
-        }
-
-        function sortFamilies(column) {
-            if (sortState.families.column === column) {
-                sortState.families.ascending = !sortState.families.ascending;
-            } else {
-                sortState.families.column = column;
-                sortState.families.ascending = true;
-            }
-            renderFamilies();
-        }
-
-        function renderFamilies() {
-            const container = document.getElementById('families-container');
-
-            if (families.length === 0) {
-                container.innerHTML = '<p>No families registered yet.</p>';
-                return;
-            }
-
-            // Sort families if a column is selected
-            let sortedFamilies = [...families];
-            if (sortState.families.column) {
-                sortedFamilies.sort((a, b) => {
-                    let aVal, bVal;
-                    
-                    switch (sortState.families.column) {
-                        case 'booking':
-                            aVal = a.booking_ref.toLowerCase();
-                            bVal = b.booking_ref.toLowerCase();
-                            break;
-                        case 'members':
-                            aVal = a.members.length;
-                            bVal = b.members.length;
-                            break;
-                        case 'camping':
-                            aVal = a.camping_type;
-                            bVal = b.camping_type;
-                            break;
-                        case 'nights':
-                            aVal = a.nights.length;
-                            bVal = b.nights.length;
-                            break;
-                        case 'students':
-                            aVal = a.members.filter(m => m.is_child && m.in_sefton_park).length;
-                            bVal = b.members.filter(m => m.is_child && m.in_sefton_park).length;
-                            break;
-                        case 'payment':
-                            aVal = a.outstanding || 0;
-                            bVal = b.outstanding || 0;
-                            break;
-                    }
-                    
-                    if (aVal < bVal) return sortState.families.ascending ? -1 : 1;
-                    if (aVal > bVal) return sortState.families.ascending ? 1 : -1;
-                    return 0;
-                });
-            }
-
-            const getSortIndicator = (column) => {
-                if (sortState.families.column === column) {
-                    return sortState.families.ascending ? ' ↑' : ' ↓';
+            async function loadActivitySignups() {
+                try {
+                    activitySignups = await fetchJSON(`${API_URL}/activity-signups`);
+                    renderActivitySignups();
+                } catch (error) {
+                    document.getElementById('activities-container').innerHTML = '<p class="alert alert-error">Error loading activity signups</p>';
                 }
-                return '';
-            };
+            }
 
-            container.innerHTML = `
+            function sortFamilies(column) {
+                if (sortState.families.column === column) {
+                    sortState.families.ascending = !sortState.families.ascending;
+                } else {
+                    sortState.families.column = column;
+                    sortState.families.ascending = true;
+                }
+                renderFamilies();
+            }
+
+            function renderFamilies() {
+                const container = document.getElementById('families-container');
+
+                if (families.length === 0) {
+                    container.innerHTML = '<p>No families registered yet.</p>';
+                    return;
+                }
+
+                // Sort families if a column is selected
+                let sortedFamilies = [...families];
+                if (sortState.families.column) {
+                    sortedFamilies.sort((a, b) => {
+                        let aVal, bVal;
+
+                        switch (sortState.families.column) {
+                            case 'booking':
+                                aVal = a.booking_ref.toLowerCase();
+                                bVal = b.booking_ref.toLowerCase();
+                                break;
+                            case 'members':
+                                aVal = a.members.length;
+                                bVal = b.members.length;
+                                break;
+                            case 'camping':
+                                aVal = a.camping_type;
+                                bVal = b.camping_type;
+                                break;
+                            case 'nights':
+                                aVal = a.nights.length;
+                                bVal = b.nights.length;
+                                break;
+                            case 'students':
+                                aVal = a.members.filter(m => m.is_child && (m.class === 'Baobab' || m.class === 'Olive')).length;
+                                bVal = b.members.filter(m => m.is_child && (m.class === 'Baobab' || m.class === 'Olive')).length;
+                                break;
+                            case 'payment':
+                                aVal = a.outstanding || 0;
+                                bVal = b.outstanding || 0;
+                                break;
+                        }
+
+                        if (aVal < bVal) return sortState.families.ascending ? -1 : 1;
+                        if (aVal > bVal) return sortState.families.ascending ? 1 : -1;
+                        return 0;
+                    });
+                }
+
+                const getSortIndicator = (column) => {
+                    if (sortState.families.column === column) {
+                        return sortState.families.ascending ? ' ↑' : ' ↓';
+                    }
+                    return '';
+                };
+
+                container.innerHTML = `
         <div style="overflow-x: auto;">
           <table>
             <thead>
@@ -812,14 +816,15 @@
             </thead>
             <tbody>
               ${sortedFamilies.map(family => {
-                const children = family.members.filter(m => m.is_child);
-                const adults = family.members.filter(m => !m.is_child);
-                const seftonChildren = family.members.filter(m => m.is_child && m.in_sefton_park);
+                    const children = family.members.filter(m => m.is_child);
+                    const adults = family.members.filter(m => !m.is_child);
+                    const seftonChildren = family.members.filter(m => m.is_child && (m.class === 'Baobab' || m.class === 'Olive'));
 
-                return `
+                    return `
                   <tr>
                     <td>
-                      <a href="/access.html?booking_ref=${encodeURIComponent(family.booking_ref)}" 
+                      <a href="#" 
+                         onclick="editFamily('${family.access_key}'); return false;"
                          style="color: var(--forest-green); text-decoration: none; font-weight: bold; cursor: pointer;"
                          onmouseover="this.style.textDecoration='underline'"
                          onmouseout="this.style.textDecoration='none'">
@@ -833,35 +838,27 @@
                     <td>${family.camping_type === 'tent' ? '⛺ Tent' : '🚐 Campervan'}</td>
                     <td>${family.nights.join(', ')}</td>
                     <td>
-                                            ${seftonChildren.map(c => {
-                                        // If class is specified (Year 3), show only class name
-                                        if (c.class) {
-                                            return `${c.name} (${c.class})`;
-                                        }
-                                        // Otherwise show year
-                                        const yearLabel = c.year === 'Reception' ? 'Reception' : `Year ${c.year || '?'}`;
-                                        return `${c.name} (${yearLabel})`;
-                                }).join('<br>') || 'None'}
+                                            ${seftonChildren.map(c => `${c.name} (${c.class})`).join('<br>') || '-'}
                     </td>
                     <td>
                       ${(() => {
-                        const outstanding = family.outstanding || 0;
-                        const owed = family.total_owed || 0;
-                        const paid = family.total_paid || 0;
-                        let color, status;
-                        
-                        if (outstanding > 0) {
-                          color = 'var(--sunset-orange)';
-                          status = 'Not Paid';
-                        } else if (outstanding < 0) {
-                          color = '#4169E1';
-                          status = 'Overpaid';
-                        } else {
-                          color = 'var(--bright-green)';
-                          status = 'Paid ✓';
-                        }
-                        
-                        return `
+                            const outstanding = family.outstanding || 0;
+                            const owed = family.total_owed || 0;
+                            const paid = family.total_paid || 0;
+                            let color, status;
+
+                            if (outstanding > 0) {
+                                color = 'var(--sunset-orange)';
+                                status = 'Not Paid';
+                            } else if (outstanding < 0) {
+                                color = '#4169E1';
+                                status = 'Overpaid';
+                            } else {
+                                color = 'var(--bright-green)';
+                                status = 'Paid ✓';
+                            }
+
+                            return `
                           <div style="color: ${color}; font-weight: bold;">
                             ${status}<br>
                             <small style="color: var(--earth-brown); font-weight: normal;">
@@ -871,7 +868,7 @@
                             </small>
                           </div>
                         `;
-                      })()}
+                        })()}
                     </td>
                     <td>
                       <button 
@@ -884,7 +881,7 @@
                     </td>
                   </tr>
                 `;
-            }).join('')}
+                }).join('')}
             </tbody>
           </table>
         </div>
@@ -893,72 +890,72 @@
           <strong>Total Children:</strong> ${families.reduce((sum, f) => sum + f.members.filter(m => m.is_child).length, 0)}
         </p>
       `;
-        }
-
-        function sortSignups(column) {
-            if (sortState.signups.column === column) {
-                sortState.signups.ascending = !sortState.signups.ascending;
-            } else {
-                sortState.signups.column = column;
-                sortState.signups.ascending = true;
-            }
-            renderActivitySignups();
-        }
-
-        function renderActivitySignups() {
-            const container = document.getElementById('activities-container');
-
-            if (activitySignups.length === 0) {
-                container.innerHTML = '<p>No activity sign-ups yet.</p>';
-                return;
             }
 
-            // Sort signups if a column is selected
-            let sortedSignups = [...activitySignups];
-            if (sortState.signups.column) {
-                sortedSignups.sort((a, b) => {
-                    let aVal, bVal;
-                    
-                    switch (sortState.signups.column) {
-                        case 'activity':
-                            aVal = a.activity_name.toLowerCase();
-                            bVal = b.activity_name.toLowerCase();
-                            break;
-                        case 'time':
-                            aVal = a.session_time;
-                            bVal = b.session_time;
-                            break;
-                        case 'booking':
-                            aVal = a.booking_ref.toLowerCase();
-                            bVal = b.booking_ref.toLowerCase();
-                            break;
-                        case 'children':
-                            aVal = a.children.length;
-                            bVal = b.children.length;
-                            break;
-                        case 'cost':
-                            aVal = a.cost * a.children.length;
-                            bVal = b.cost * b.children.length;
-                            break;
-                    }
-                    
-                    if (aVal < bVal) return sortState.signups.ascending ? -1 : 1;
-                    if (aVal > bVal) return sortState.signups.ascending ? 1 : -1;
-                    return 0;
-                });
-            }
-
-            const getSortIndicator = (column) => {
+            function sortSignups(column) {
                 if (sortState.signups.column === column) {
-                    return sortState.signups.ascending ? ' ↑' : ' ↓';
+                    sortState.signups.ascending = !sortState.signups.ascending;
+                } else {
+                    sortState.signups.column = column;
+                    sortState.signups.ascending = true;
                 }
-                return '';
-            };
+                renderActivitySignups();
+            }
 
-            // Get family payment info for each signup
-            const familyMap = new Map(families.map(f => [f.booking_ref, f]));
+            function renderActivitySignups() {
+                const container = document.getElementById('activities-container');
 
-            container.innerHTML = `
+                if (activitySignups.length === 0) {
+                    container.innerHTML = '<p>No activity sign-ups yet.</p>';
+                    return;
+                }
+
+                // Sort signups if a column is selected
+                let sortedSignups = [...activitySignups];
+                if (sortState.signups.column) {
+                    sortedSignups.sort((a, b) => {
+                        let aVal, bVal;
+
+                        switch (sortState.signups.column) {
+                            case 'activity':
+                                aVal = a.activity_name.toLowerCase();
+                                bVal = b.activity_name.toLowerCase();
+                                break;
+                            case 'time':
+                                aVal = a.session_time;
+                                bVal = b.session_time;
+                                break;
+                            case 'booking':
+                                aVal = a.booking_ref.toLowerCase();
+                                bVal = b.booking_ref.toLowerCase();
+                                break;
+                            case 'children':
+                                aVal = a.children.length;
+                                bVal = b.children.length;
+                                break;
+                            case 'cost':
+                                aVal = a.cost * a.children.length;
+                                bVal = b.cost * b.children.length;
+                                break;
+                        }
+
+                        if (aVal < bVal) return sortState.signups.ascending ? -1 : 1;
+                        if (aVal > bVal) return sortState.signups.ascending ? 1 : -1;
+                        return 0;
+                    });
+                }
+
+                const getSortIndicator = (column) => {
+                    if (sortState.signups.column === column) {
+                        return sortState.signups.ascending ? ' ↑' : ' ↓';
+                    }
+                    return '';
+                };
+
+                // Get family payment info for each signup
+                const familyMap = new Map(families.map(f => [f.booking_ref, f]));
+
+                container.innerHTML = `
         <div style="overflow-x: auto;">
           <table>
             <thead>
@@ -973,23 +970,27 @@
             </thead>
             <tbody>
               ${sortedSignups.map(signup => {
-                const totalCost = signup.cost * signup.children.length;
-                const family = familyMap.get(signup.booking_ref);
-                const outstanding = family?.outstanding || 0;
-                
-                let statusColor, statusText;
-                if (outstanding > 0) {
-                  statusColor = 'var(--sunset-orange)';
-                  statusText = `Not Paid (£${outstanding.toFixed(2)} owed)`;
-                } else if (outstanding < 0) {
-                  statusColor = '#4169E1';
-                  statusText = `Overpaid (£${Math.abs(outstanding).toFixed(2)} credit)`;
-                } else {
-                  statusColor = 'var(--bright-green)';
-                  statusText = 'Paid ✓';
-                }
-                
-                return `
+                    const totalCost = signup.cost * signup.children.length;
+                    const family = familyMap.get(signup.booking_ref);
+                    const outstanding = family?.outstanding || 0;
+
+                    let statusColor, statusText;
+
+                    if (totalCost === 0) {
+                        statusText = '';
+                        statusColor = 'inherit';
+                    } else if (outstanding > 0) {
+                        statusColor = 'var(--sunset-orange)';
+                        statusText = `Not Paid (£${outstanding.toFixed(2)} owed)`;
+                    } else if (outstanding < 0) {
+                        statusColor = '#4169E1';
+                        statusText = `Overpaid (£${Math.abs(outstanding).toFixed(2)} credit)`;
+                    } else {
+                        statusColor = 'var(--bright-green)';
+                        statusText = 'Paid ✓';
+                    }
+
+                    return `
                   <tr>
                     <td><strong>${signup.activity_name}</strong></td>
                     <td>${signup.session_time}</td>
@@ -1001,7 +1002,7 @@
                     </td>
                   </tr>
                 `;
-            }).join('')}
+                }).join('')}
             </tbody>
           </table>
         </div>
@@ -1010,101 +1011,101 @@
           <strong>Total Cost:</strong> £${activitySignups.reduce((sum, s) => sum + (s.cost * s.children.length), 0).toFixed(2)}
         </p>
       `;
-        }
-
-
-
-        async function exportFamilies() {
-            try {
-                const response = await fetch(`${API_URL}/export/families`);
-                if (response.ok) {
-                    const data = await response.json();
-                    const csv = convertToCSV(data);
-                    await navigator.clipboard.writeText(csv);
-                    alert('Family data copied to clipboard! You can now paste it into Google Sheets.');
-                }
-            } catch (error) {
-                console.error('Error exporting families:', error);
-                alert('Error exporting data');
             }
-        }
 
-        async function exportActivities() {
-            try {
-                const response = await fetch(`${API_URL}/export/activities`);
-                if (response.ok) {
-                    const data = await response.json();
-                    const csv = convertToCSV(data);
-                    await navigator.clipboard.writeText(csv);
-                    alert('Activity data copied to clipboard! You can now paste it into Google Sheets.');
+
+
+            async function exportFamilies() {
+                try {
+                    const response = await fetch(`${API_URL}/export/families`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const csv = convertToCSV(data);
+                        await navigator.clipboard.writeText(csv);
+                        alert('Family data copied to clipboard! You can now paste it into Google Sheets.');
+                    }
+                } catch (error) {
+                    console.error('Error exporting families:', error);
+                    alert('Error exporting data');
                 }
-            } catch (error) {
-                console.error('Error exporting activities:', error);
-                alert('Error exporting data');
             }
-        }
 
-        function convertToCSV(data) {
-            if (data.length === 0) return '';
+            async function exportActivities() {
+                try {
+                    const response = await fetch(`${API_URL}/export/activities`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const csv = convertToCSV(data);
+                        await navigator.clipboard.writeText(csv);
+                        alert('Activity data copied to clipboard! You can now paste it into Google Sheets.');
+                    }
+                } catch (error) {
+                    console.error('Error exporting activities:', error);
+                    alert('Error exporting data');
+                }
+            }
 
-            const headers = Object.keys(data[0]);
-            const csvRows = [
-                headers.join(','),
-                ...data.map(row =>
-                    headers.map(header => {
-                        const value = row[header] || '';
-                        // Escape quotes and wrap in quotes if contains comma
-                        const escaped = String(value).replace(/"/g, '""');
-                        return escaped.includes(',') ? `"${escaped}"` : escaped;
-                    }).join(',')
-                )
-            ];
+            function convertToCSV(data) {
+                if (data.length === 0) return '';
 
-            return csvRows.join('\n');
-        }
+                const headers = Object.keys(data[0]);
+                const csvRows = [
+                    headers.join(','),
+                    ...data.map(row =>
+                        headers.map(header => {
+                            const value = row[header] || '';
+                            // Escape quotes and wrap in quotes if contains comma
+                            const escaped = String(value).replace(/"/g, '""');
+                            return escaped.includes(',') ? `"${escaped}"` : escaped;
+                        }).join(',')
+                    )
+                ];
 
-        let editMemberCount = 0;
+                return csvRows.join('\n');
+            }
 
-        async function editFamily(accessKey) {
-            const family = families.find(f => f.access_key === accessKey);
-            if (!family) return;
+            let editMemberCount = 0;
 
-            // Populate the form
-            document.getElementById('edit-family-id').value = family.id;
-            document.getElementById('edit-family-access-key').value = family.access_key;
-            document.getElementById('edit-booking-ref').value = family.booking_ref;
-            document.querySelector(`input[name="edit-camping-type"][value="${family.camping_type}"]`).checked = true;
+            async function editFamily(accessKey) {
+                const family = families.find(f => f.access_key === accessKey);
+                if (!family) return;
 
-            // Set nights
-            document.querySelectorAll('input[name="edit-nights"]').forEach(cb => {
-                cb.checked = family.nights.includes(cb.value);
-            });
+                // Populate the form
+                document.getElementById('edit-family-id').value = family.id;
+                document.getElementById('edit-family-access-key').value = family.access_key;
+                document.getElementById('edit-booking-ref').value = family.booking_ref;
+                document.querySelector(`input[name="edit-camping-type"][value="${family.camping_type}"]`).checked = true;
 
-            // Clear and populate members
-            document.getElementById('edit-members-container').innerHTML = '';
-            editMemberCount = 0;
-            family.members.forEach(member => {
-                addEditMember(member.is_child === 1, member);
-            });
+                // Set nights
+                document.querySelectorAll('input[name="edit-nights"]').forEach(cb => {
+                    cb.checked = family.nights.includes(cb.value);
+                });
 
-            // Show modal
-            document.getElementById('edit-family-modal').style.display = 'flex';
-        }
+                // Clear and populate members
+                document.getElementById('edit-members-container').innerHTML = '';
+                editMemberCount = 0;
+                family.members.forEach(member => {
+                    addEditMember(member.is_child === 1, member);
+                });
 
-        function closeEditFamilyModal() {
-            document.getElementById('edit-family-modal').style.display = 'none';
-            document.getElementById('edit-family-form').reset();
-        }
+                // Show modal
+                document.getElementById('edit-family-modal').style.display = 'flex';
+            }
 
-        function addEditMember(isChild, data = null) {
-            editMemberCount++;
-            const container = document.getElementById('edit-members-container');
+            function closeEditFamilyModal() {
+                document.getElementById('edit-family-modal').style.display = 'none';
+                document.getElementById('edit-family-form').reset();
+            }
 
-            const memberCard = document.createElement('div');
-            memberCard.className = `member-card ${isChild ? 'child' : ''}`;
-            memberCard.id = `edit-member-${editMemberCount}`;
+            function addEditMember(isChild, data = null) {
+                editMemberCount++;
+                const container = document.getElementById('edit-members-container');
 
-            memberCard.innerHTML = `
+                const memberCard = document.createElement('div');
+                memberCard.className = `member-card ${isChild ? 'child' : ''}`;
+                memberCard.id = `edit-member-${editMemberCount}`;
+
+                memberCard.innerHTML = `
                 <button type="button" class="remove-btn" onclick="removeEditMember(${editMemberCount})">×</button>
                 <h4 style="color: var(--forest-green); margin-bottom: 15px;">
                     ${isChild ? '👦 Child' : '👨 Adult'}
@@ -1124,225 +1125,194 @@
 
                 ${isChild ? `
                     <div class="form-group">
-                        <label class="checkbox-label">
-                            <input 
-                                type="checkbox" 
-                                name="edit-member-sefton-${editMemberCount}"
-                                ${data?.in_sefton_park ? 'checked' : ''}
-                            >
-                            <span>Attends Sefton Park School</span>
-                        </label>
-                    </div>
-
-                    <div class="form-group" id="edit-sefton-details-${editMemberCount}" style="display: ${data?.in_sefton_park ? 'block' : 'none'};">
-                        <label>Year</label>
-                        <select name="edit-member-year-${editMemberCount}" id="edit-member-year-${editMemberCount}">
-                            <option value="">Select Year</option>
-                            <option value="Reception" ${data?.year === 'Reception' ? 'selected' : ''}>Reception</option>
-                            <option value="1" ${data?.year === '1' ? 'selected' : ''}>Year 1</option>
-                            <option value="2" ${data?.year === '2' ? 'selected' : ''}>Year 2</option>
-                            <option value="3" ${data?.year === '3' ? 'selected' : ''}>Year 3</option>
-                            <option value="4" ${data?.year === '4' ? 'selected' : ''}>Year 4</option>
-                            <option value="5" ${data?.year === '5' ? 'selected' : ''}>Year 5</option>
-                            <option value="6" ${data?.year === '6' ? 'selected' : ''}>Year 6</option>
-                        </select>
-
-                        <div id="edit-class-selection-${editMemberCount}" style="display: ${data?.year === '3' ? 'block' : 'none'}; margin-top: 10px;">
-                            <label>Class</label>
-                            <select name="edit-member-class-${editMemberCount}">
-                                <option value="">Select Class</option>
-                                <option value="Baobab" ${data?.class === 'Baobab' ? 'selected' : ''}>Baobab</option>
-                                <option value="Olive" ${data?.class === 'Olive' ? 'selected' : ''}>Olive</option>
-                            </select>
-                        </div>
+                       <label>Class / Group *</label>
+                       <div class="checkbox-group">
+                           <label class="checkbox-label">
+                               <input type="radio" name="edit-member-class-${editMemberCount}" value="Baobab" ${data?.class === 'Baobab' ? 'checked' : ''} required>
+                               <span>Baobab</span>
+                           </label>
+                           <label class="checkbox-label">
+                               <input type="radio" name="edit-member-class-${editMemberCount}" value="Olive" ${data?.class === 'Olive' ? 'checked' : ''}>
+                               <span>Olive</span>
+                           </label>
+                           <label class="checkbox-label">
+                               <input type="radio" name="edit-member-class-${editMemberCount}" value="Other" ${(data?.class && data.class !== 'Baobab' && data.class !== 'Olive') ? 'checked' : ''}>
+                               <span>Other / Sibling</span>
+                           </label>
+                       </div>
                     </div>
                 ` : ''}
             `;
 
-            container.appendChild(memberCard);
+                container.appendChild(memberCard);
 
-            // Add event listeners
-            if (isChild) {
-                const checkbox = document.querySelector(`input[name="edit-member-sefton-${editMemberCount}"]`);
-                checkbox.addEventListener('change', (e) => {
-                    const details = document.getElementById(`edit-sefton-details-${editMemberCount}`);
-                    details.style.display = e.target.checked ? 'block' : 'none';
-                });
-
-                const yearDropdown = document.getElementById(`edit-member-year-${editMemberCount}`);
-                if (yearDropdown) {
-                    yearDropdown.addEventListener('change', (e) => {
-                        const classSelection = document.getElementById(`edit-class-selection-${editMemberCount}`);
-                        classSelection.style.display = e.target.value === '3' ? 'block' : 'none';
-                    });
+                // Add event listeners
+                if (isChild) {
+                    // No specific listeners needed
                 }
             }
-        }
 
-        function removeEditMember(id) {
-            const member = document.getElementById(`edit-member-${id}`);
-            if (member) member.remove();
-        }
-
-        document.getElementById('edit-family-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const formData = new FormData(e.target);
-            const familyId = document.getElementById('edit-family-id').value;
-            const bookingRef = document.getElementById('edit-booking-ref').value;
-            const campingType = formData.get('edit-camping-type');
-            const nights = formData.getAll('edit-nights');
-
-            if (nights.length === 0) {
-                alert('Please select at least one night');
-                return;
+            function removeEditMember(id) {
+                const member = document.getElementById(`edit-member-${id}`);
+                if (member) member.remove();
             }
 
-            // Collect members
-            const members = [];
-            const memberCards = document.querySelectorAll('#edit-members-container .member-card');
+            document.getElementById('edit-family-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
 
-            memberCards.forEach((card) => {
-                const id = card.id.split('-')[2];
-                const name = formData.get(`edit-member-name-${id}`);
-                const isChild = formData.get(`edit-member-is-child-${id}`) === '1';
-                const inSeftonPark = formData.get(`edit-member-sefton-${id}`) === 'on';
-                const year = formData.get(`edit-member-year-${id}`) || null;
-                const classValue = formData.get(`edit-member-class-${id}`) || null;
+                const formData = new FormData(e.target);
+                const familyId = document.getElementById('edit-family-id').value;
+                const bookingRef = document.getElementById('edit-booking-ref').value;
+                const campingType = formData.get('edit-camping-type');
+                const nights = formData.getAll('edit-nights');
 
-                if (name) {
-                    members.push({
-                        name,
-                        is_child: isChild,
-                        in_sefton_park: inSeftonPark,
-                        year,
-                        class: classValue
+                if (nights.length === 0) {
+                    alert('Please select at least one night');
+                    return;
+                }
+
+                // Collect members
+                const members = [];
+                const memberCards = document.querySelectorAll('#edit-members-container .member-card');
+
+                memberCards.forEach((card) => {
+                    const id = card.id.split('-')[2];
+                    const name = formData.get(`edit-member-name-${id}`);
+                    const isChild = formData.get(`edit-member-is-child-${id}`) === '1';
+                    // Logic for class
+                    const classValue = isChild ? formData.get(`edit-member-class-${id}`) : null;
+
+                    if (name) {
+                        members.push({
+                            name,
+                            is_child: isChild,
+                            class: classValue
+                        });
+                    }
+                });
+
+                if (members.length === 0) {
+                    alert('Please add at least one family member');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_URL}/families`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            booking_ref: bookingRef,
+                            members,
+                            camping_type: campingType,
+                            nights
+                        })
                     });
+
+                    if (response.ok) {
+                        closeEditFamilyModal();
+                        await loadFamilies();
+                        alert('Family registration updated successfully! 🎉');
+                    } else {
+                        alert('Error updating family registration');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error updating family registration');
                 }
             });
 
-            if (members.length === 0) {
-                alert('Please add at least one family member');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_URL}/families`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        booking_ref: bookingRef,
-                        members,
-                        camping_type: campingType,
-                        nights
-                    })
-                });
-
-                if (response.ok) {
-                    closeEditFamilyModal();
-                    await loadFamilies();
-                    alert('Family registration updated successfully! 🎉');
-                } else {
-                    alert('Error updating family registration');
+            async function deleteFamily(accessKey, bookingRef) {
+                if (!confirm(`Are you sure you want to delete the registration for booking reference "${bookingRef}"? This cannot be undone.`)) {
+                    return;
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error updating family registration');
-            }
-        });
 
-        async function deleteFamily(accessKey, bookingRef) {
-            if (!confirm(`Are you sure you want to delete the registration for booking reference "${bookingRef}"? This cannot be undone.`)) {
-                return;
-            }
+                try {
+                    // We need to add a DELETE endpoint on the server
+                    const family = families.find(f => f.access_key === accessKey);
+                    if (!family) return;
 
-            try {
-                // We need to add a DELETE endpoint on the server
-                const family = families.find(f => f.access_key === accessKey);
-                if (!family) return;
+                    const response = await fetch(`${API_URL}/families/${family.id}`, {
+                        method: 'DELETE'
+                    });
 
-                const response = await fetch(`${API_URL}/families/${family.id}`, {
-                    method: 'DELETE'
-                });
-
-                if (response.ok) {
-                    await loadFamilies();
-                    alert('Family registration deleted successfully');
-                } else {
+                    if (response.ok) {
+                        await loadFamilies();
+                        alert('Family registration deleted successfully');
+                    } else {
+                        alert('Error deleting family registration');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
                     alert('Error deleting family registration');
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error deleting family registration');
-            }
-        }
-
-        async function deleteActivity() {
-            const activityId = document.getElementById('edit-activity-id').value;
-            const activityName = document.getElementById('edit-activity-name').value;
-            
-            if (!confirm(`Are you sure you want to delete "${activityName}"? This will also remove all sign-ups for this activity. This cannot be undone.`)) {
-                return;
             }
 
-            try {
-                const response = await fetch(`${API_URL}/activities/${activityId}`, {
-                    method: 'DELETE'
-                });
+            async function deleteActivity() {
+                const activityId = document.getElementById('edit-activity-id').value;
+                const activityName = document.getElementById('edit-activity-name').value;
 
-                if (response.ok) {
-                    closeEditModal();
-                    await loadAllActivities();
-                    await loadActivitySignups();
-                    alert('Activity deleted successfully');
-                } else {
+                if (!confirm(`Are you sure you want to delete "${activityName}"? This will also remove all sign-ups for this activity. This cannot be undone.`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_URL}/activities/${activityId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        closeEditModal();
+                        await loadAllActivities();
+                        await loadActivitySignups();
+                        alert('Activity deleted successfully');
+                    } else {
+                        alert('Error deleting activity');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
                     alert('Error deleting activity');
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error deleting activity');
             }
-        }
 
-        document.getElementById('add-activity-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+            document.getElementById('add-activity-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
 
-            const name = document.getElementById('activity-name').value;
-            const session_time = document.getElementById('activity-time').value;
-            const cost = parseFloat(document.getElementById('activity-cost').value) || 0;
-            const description = document.getElementById('activity-description').value;
-            const max_participants = parseInt(document.getElementById('activity-max-participants').value) || 0;
+                const name = document.getElementById('activity-name').value;
+                const session_time = document.getElementById('activity-time').value;
+                const cost = parseFloat(document.getElementById('activity-cost').value) || 0;
+                const description = document.getElementById('activity-description').value;
+                const max_participants = parseInt(document.getElementById('activity-max-participants').value) || 0;
 
-            try {
-                const response = await fetch(`${API_URL}/activities`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        name,
-                        session_time,
-                        cost,
-                        description,
-                        max_participants
-                    })
-                });
+                try {
+                    const response = await fetch(`${API_URL}/activities`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name,
+                            session_time,
+                            cost,
+                            description,
+                            max_participants
+                        })
+                    });
 
-                if (response.ok) {
-                    closeAddModal();
-                    await loadAllActivities();
-                    alert('Activity added successfully! 🎉');
-                } else {
+                    if (response.ok) {
+                        closeAddModal();
+                        await loadAllActivities();
+                        alert('Activity added successfully! 🎉');
+                    } else {
+                        alert('Error adding activity');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
                     alert('Error adding activity');
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error adding activity');
-            }
-        });
-    </script>
+            });
+        </script>
 </body>
 
 </html>

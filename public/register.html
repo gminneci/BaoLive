@@ -23,6 +23,15 @@
         <div class="card">
             <div id="alert-container"></div>
 
+            <div id="school-notice"
+                style="background: var(--light-cream); padding: 15px; border-left: 5px solid var(--forest-green); margin-bottom: 20px;">
+                <p style="margin: 0; color: var(--earth-brown);">
+                    Please add the child or children specifically in
+                    <strong>Baobab</strong> or <strong>Olive</strong> classes for ease of access.
+                    Adding other siblings and adults will allow everyone to take part in activities!
+                </p>
+            </div>
+
             <form id="registration-form">
                 <!-- Booking Reference -->
                 <div class="form-group">
@@ -84,23 +93,27 @@
         let memberCount = 0;
         let existingFamily = null;
 
-        // Check if we're editing an existing registration
         window.addEventListener('DOMContentLoaded', async () => {
-            // Check if this is a new registration (clear localStorage)
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('new') === 'true') {
-                localStorage.removeItem('accessKey');
-                // Add one child by default for new registrations
-                addMember(true);
-                return;
+            const refParam = urlParams.get('ref');
+            const isNew = urlParams.get('new') === 'true';
+
+            if (refParam) {
+                document.getElementById('booking-ref').value = refParam;
+                if (isNew) {
+                    // Pre-fill ref but treat as new
+                    localStorage.removeItem('accessKey');
+                    addMember(true);
+                    return;
+                }
             }
-            
+
             const accessKey = localStorage.getItem('accessKey');
             if (accessKey) {
                 await loadExistingFamily(accessKey);
             } else {
-                // Add one child by default for new registrations
-                addMember(true);
+                // Default handling
+                if (!refParam) addMember(true);
             }
         });
 
@@ -116,10 +129,14 @@
 
         function populateForm(family) {
             document.getElementById('booking-ref').value = family.booking_ref;
-            document.querySelector(`input[name="camping-type"][value="${family.camping_type}"]`).checked = true;
+            document.getElementById('booking-ref').readOnly = true; // Cannot change ref when editing
+
+            const typeRadio = document.querySelector(`input[name="camping-type"][value="${family.camping_type}"]`);
+            if (typeRadio) typeRadio.checked = true;
 
             family.nights.forEach(night => {
-                document.querySelector(`input[name="nights"][value="${night}"]`).checked = true;
+                const nightCheck = document.querySelector(`input[name="nights"][value="${night}"]`);
+                if (nightCheck) nightCheck.checked = true;
             });
 
             family.members.forEach(member => {
@@ -155,60 +172,26 @@
 
         ${isChild ? `
           <div class="form-group">
-            <label class="checkbox-label">
-              <input 
-                type="checkbox" 
-                name="member-sefton-${memberCount}"
-                ${data?.in_sefton_park ? 'checked' : ''}
-              >
-              <span>Attends Sefton Park School</span>
-            </label>
-          </div>
-
-          <div class="form-group" id="sefton-details-${memberCount}" style="display: ${data?.in_sefton_park ? 'block' : 'none'};">
-            <label>Year</label>
-            <select name="member-year-${memberCount}" id="member-year-${memberCount}">
-              <option value="">Select Year</option>
-                            <option value="Reception" ${data?.year === 'Reception' ? 'selected' : ''}>Reception</option>
-              <option value="1" ${data?.year === '1' ? 'selected' : ''}>Year 1</option>
-              <option value="2" ${data?.year === '2' ? 'selected' : ''}>Year 2</option>
-              <option value="3" ${data?.year === '3' ? 'selected' : ''}>Year 3</option>
-              <option value="4" ${data?.year === '4' ? 'selected' : ''}>Year 4</option>
-              <option value="5" ${data?.year === '5' ? 'selected' : ''}>Year 5</option>
-              <option value="6" ${data?.year === '6' ? 'selected' : ''}>Year 6</option>
-            </select>
-
-            <div id="class-selection-${memberCount}" style="display: ${data?.year === '3' ? 'block' : 'none'}; margin-top: 10px;">
-              <label>Class</label>
-              <select name="member-class-${memberCount}">
-                <option value="">Select Class</option>
-                <option value="Baobab" ${data?.class === 'Baobab' ? 'selected' : ''}>Baobab</option>
-                <option value="Olive" ${data?.class === 'Olive' ? 'selected' : ''}>Olive</option>
-              </select>
-            </div>
+             <label>Class / Group *</label>
+             <div class="checkbox-group">
+                 <label class="checkbox-label">
+                     <input type="radio" name="member-class-${memberCount}" value="Baobab" ${data?.class === 'Baobab' ? 'checked' : ''} required>
+                     <span>Baobab</span>
+                 </label>
+                 <label class="checkbox-label">
+                     <input type="radio" name="member-class-${memberCount}" value="Olive" ${data?.class === 'Olive' ? 'checked' : ''}>
+                     <span>Olive</span>
+                 </label>
+                 <label class="checkbox-label">
+                     <input type="radio" name="member-class-${memberCount}" value="Other" ${(data?.class && data.class !== 'Baobab' && data.class !== 'Olive') ? 'checked' : ''}>
+                     <span>Other / Sibling</span>
+                 </label>
+             </div>
           </div>
         ` : ''}
       `;
 
             membersContainer.appendChild(memberCard);
-
-            // Add event listener for Sefton Park checkbox
-            if (isChild) {
-                const checkbox = document.querySelector(`input[name="member-sefton-${memberCount}"]`);
-                checkbox.addEventListener('change', (e) => {
-                    const details = document.getElementById(`sefton-details-${memberCount}`);
-                    details.style.display = e.target.checked ? 'block' : 'none';
-                });
-
-                // Add event listener for year dropdown to show/hide class selection
-                const yearDropdown = document.getElementById(`member-year-${memberCount}`);
-                if (yearDropdown) {
-                    yearDropdown.addEventListener('change', (e) => {
-                        const classSelection = document.getElementById(`class-selection-${memberCount}`);
-                        classSelection.style.display = e.target.value === '3' ? 'block' : 'none';
-                    });
-                }
-            }
         }
 
         function removeMember(id) {
@@ -216,13 +199,6 @@
             if (member) {
                 member.remove();
             }
-        }
-
-        function generateAccessKey(childNames) {
-            return childNames
-                .map(name => name.toLowerCase().trim())
-                .sort()
-                .join('-');
         }
 
         document.getElementById('registration-form').addEventListener('submit', async (e) => {
@@ -246,16 +222,13 @@
                 const id = card.id.split('-')[1];
                 const name = formData.get(`member-name-${id}`);
                 const isChild = formData.get(`member-is-child-${id}`) === '1';
-                const inSeftonPark = formData.get(`member-sefton-${id}`) === 'on';
-                const year = formData.get(`member-year-${id}`) || null;
-                const classValue = formData.get(`member-class-${id}`) || null;
+                // Logic for class: if child, get radio value. If 'Other', we save 'Other'.
+                const classValue = isChild ? formData.get(`member-class-${id}`) : null;
 
                 if (name) {
                     members.push({
                         name,
                         is_child: isChild,
-                        in_sefton_park: inSeftonPark,
-                        year,
                         class: classValue
                     });
                 }
@@ -273,17 +246,17 @@
             }
 
             try {
-                // Check if this is a new registration (not editing)
-                const urlParams = new URLSearchParams(window.location.search);
-                const isNewRegistration = urlParams.get('new') === 'true' || !existingFamily;
-                
-                // If it's a new registration, check for duplicate booking ref
-                if (isNewRegistration) {
+                // If it's a new registration check, verify ref uniqueness if we aren't editing
+                // But simplified: existingFamily logic handles "Editing".
+                // If !existingFamily, we are creating new.
+
+                if (!existingFamily) {
                     try {
                         const checkData = await fetchJSON(`${API_URL}/families/check/${bookingRef}`);
                         if (checkData.exists) {
-                        showAlert(`Booking reference "${bookingRef}" is already registered. Use "Access My Registration" to edit it instead.`, 'error');
-                        return;
+                            showAlert(`Booking reference "${bookingRef}" is already registered. You are editing it now? (This shouldn't happen if flow is correct)`, 'error');
+                            // Logic edge case: user typed existing ref in "New" flow manually?
+                            return;
                         }
                     } catch (err) {
                         showAlert('Error checking booking reference', 'error');
@@ -311,12 +284,11 @@
                 }
 
                 if (result && result.access_key) {
-                    // Store access key in localStorage
+                    // Store access key
                     localStorage.setItem('accessKey', result.access_key);
 
                     showAlert('Registration saved successfully! 🎉 Redirecting to activities...', 'success');
 
-                    // Redirect after a short delay
                     setTimeout(() => {
                         window.location.href = 'activities.html';
                     }, 1500);

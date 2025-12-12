@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
-const SQLiteStore = require('connect-sqlite3')(session);
 const { db, initDatabase } = require('./database');
 
 const app = express();
@@ -18,12 +17,8 @@ if (!ADMIN_PASSWORD) {
     console.warn('WARNING: ADMIN_PASSWORD environment variable not set. Admin access will not work.');
 }
 
-// Session setup with SQLite store for production
+// Session setup
 app.use(session({
-    store: new SQLiteStore({
-        db: 'sessions.db',
-        dir: './'
-    }),
     secret: process.env.SESSION_SECRET || 'baolive-secret-change-in-production',
     resave: false,
     saveUninitialized: false,
@@ -137,8 +132,6 @@ async function getFamiliesWithFinancials(filterType = null, filterValue = null) 
                    'id', fm.id,
                    'name', fm.name,
                    'is_child', fm.is_child,
-                   'in_sefton_park', fm.in_sefton_park,
-                   'year', fm.year,
                    'class', fm.class
                  )
                ) as members
@@ -289,8 +282,8 @@ app.post('/api/families', async (req, res) => {
         // Insert Members
         // Note: Prepared statements for multiple inserts
         const stmt = db.prepare(`
-            INSERT INTO family_members (family_id, name, is_child, in_sefton_park, year, class)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO family_members (family_id, name, is_child, class)
+            VALUES (?, ?, ?, ?)
         `);
 
         // We wrap bulk insert in a promise manually as statement execution is synchronous-like in loop but finalized async
@@ -302,8 +295,6 @@ app.post('/api/families', async (req, res) => {
                         familyId,
                         member.name,
                         member.is_child ? 1 : 0,
-                        member.in_sefton_park ? 1 : 0,
-                        member.year || null,
                         member.class || null
                     );
                 });
@@ -607,8 +598,6 @@ app.get('/api/export/families', async (req, res) => {
               f.nights,
               fm.name,
               CASE WHEN fm.is_child = 1 THEN 'Child' ELSE 'Adult' END as person_type,
-              CASE WHEN fm.in_sefton_park = 1 THEN 'Yes' ELSE 'No' END as in_sefton_park,
-              fm.year,
               fm.class
             FROM families f
             LEFT JOIN family_members fm ON f.id = fm.family_id
@@ -627,4 +616,42 @@ app.get('/api/export/families', async (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+});
+// Public endpoint to see who is doing what
+app.get('/api/public/participants', async (req, res) => {
+    try {
+        // Get all activities
+        const activities = await dbAll('SELECT * FROM activities WHERE available = 1 ORDER BY session_time, name');
+
+        // Get all signups
+        const signups = await dbAll(`
+            SELECT 
+                activity_id,
+                children as participants
+            FROM activity_signups
+        `);
+
+        // Combine them
+        const results = activities.map(activity => {
+            const activitySignups = signups.filter(s => s.activity_id === activity.id);
+            // Flatten all participant arrays into one list
+            const allParticipants = activitySignups.reduce((all, s) => {
+                const names = JSON.parse(s.participants);
+                return all.concat(names);
+            }, []);
+
+            return {
+                id: activity.id,
+                name: activity.name,
+                session_time: activity.session_time,
+                description: activity.description,
+                max_participants: activity.max_participants,
+                participants: allParticipants.sort()
+            };
+        });
+
+        res.json(results);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
