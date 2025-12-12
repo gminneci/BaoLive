@@ -369,11 +369,11 @@ app.get('/api/activities/all', async (req, res) => {
 });
 
 app.post('/api/activities', requireAdmin, async (req, res) => {
-    const { name, session_time, cost, description, max_participants, available } = req.body;
+    const { name, session_time, cost, description, max_participants, available, allowed_ages } = req.body;
     try {
         const result = await dbRun(
-            `INSERT INTO activities (name, session_time, cost, description, max_participants, available) VALUES (?, ?, ?, ?, ?, ?)`,
-            [name, session_time, cost || 0, description || '', max_participants || 0, available !== undefined ? available : 1]
+            `INSERT INTO activities (name, session_time, cost, description, max_participants, available, allowed_ages) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [name, session_time, cost || 0, description || '', max_participants || 0, available !== undefined ? available : 1, allowed_ages || 'both']
         );
         res.json({ success: true, id: result.lastID });
     } catch (err) {
@@ -391,11 +391,11 @@ app.put('/api/activities/:id/availability', requireAdmin, async (req, res) => {
 });
 
 app.put('/api/activities/:id', requireAdmin, async (req, res) => {
-    const { name, session_time, cost, description, max_participants } = req.body;
+    const { name, session_time, cost, description, max_participants, allowed_ages } = req.body;
     try {
         await dbRun(
-            'UPDATE activities SET name = ?, session_time = ?, cost = ?, description = ?, max_participants = ? WHERE id = ?',
-            [name, session_time, cost || 0, description || '', max_participants || 0, req.params.id]
+            'UPDATE activities SET name = ?, session_time = ?, cost = ?, description = ?, max_participants = ?, allowed_ages = ? WHERE id = ?',
+            [name, session_time, cost || 0, description || '', max_participants || 0, allowed_ages || 'both', req.params.id]
         );
         res.json({ success: true });
     } catch (err) {

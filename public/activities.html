@@ -148,16 +148,27 @@
 
         function renderActivities() {
             const container = document.getElementById('activities-list');
-            const children = familyData.members.filter(m => m.is_child);
 
-            if (children.length === 0) {
-                container.innerHTML = '<p>No children registered. Please update your registration to add children.</p>';
+            // Separate family members by type
+            const children = familyData.members.filter(m => m.is_child);
+            const adults = familyData.members.filter(m => !m.is_child);
+
+            if (familyData.members.length === 0) {
+                container.innerHTML = '<p>No family members registered.</p>';
                 return;
             }
 
             container.innerHTML = activities.map(activity => {
                 const existingSignup = mySignups.find(s => s.activity_id === activity.id);
-                const signedUpChildren = existingSignup ? existingSignup.children : [];
+                // "children" in the database actually stores names of ALL participants (legacy naming)
+                const signedUpNames = existingSignup ? existingSignup.children : [];
+
+                const allowedAges = activity.allowed_ages || 'both'; // 'child', 'adult', 'both'
+
+                let eligibleMembers = [];
+                if (allowedAges === 'child') eligibleMembers = children;
+                else if (allowedAges === 'adult') eligibleMembers = adults;
+                else eligibleMembers = [...children, ...adults];
 
                 return `
           <div class="activity-card">
@@ -166,24 +177,32 @@
               <div class="activity-cost">£${activity.cost.toFixed(2)}</div>
             </div>
             <div class="activity-time">📅 ${activity.session_time}</div>
-            <p style="margin-bottom: 15px; color: var(--earth-brown);">${activity.description}</p>
+            <p style="margin-bottom: 5px; color: var(--earth-brown);">${activity.description}</p>
+            
+            <div style="margin-bottom: 15px;">
+                ${(() => {
+                        if (allowedAges === 'child') return '<span class="badge" style="background:#e0f7fa; color:#006064; font-size:0.8em;">👶 Children Only</span>';
+                        if (allowedAges === 'adult') return '<span class="badge" style="background:#fce4ec; color:#880e4f; font-size:0.8em;">🧑 Adults Only</span>';
+                        return '<span class="badge" style="background:var(--light-cream); color:var(--night-blue); font-size:0.8em;">Everyone Welcome</span>';
+                    })()}
+            </div>
 
             <div style="margin-top: 15px;">
-              <strong style="color: var(--forest-green);">Select Children:</strong>
+              <strong style="color: var(--forest-green);">Select Participants:</strong>
               <div class="checkbox-group" style="margin-top: 10px;">
-                ${children.map(child => `
+                ${eligibleMembers.length > 0 ? eligibleMembers.map(member => `
                   <label class="checkbox-label">
                     <input 
                       type="checkbox" 
                       class="activity-child-checkbox"
                       data-activity-id="${activity.id}"
                       data-activity-cost="${activity.cost}"
-                      data-child-name="${child.name}"
-                      ${signedUpChildren.includes(child.name) ? 'checked' : ''}
+                      data-child-name="${member.name}"
+                      ${signedUpNames.includes(member.name) ? 'checked' : ''}
                     >
-                    <span>${child.name}</span>
+                    <span>${member.name}</span>
                   </label>
-                `).join('')}
+                `).join('') : '<span style="color:#999; font-style:italic;">No eligible members for this activity.</span>'}
               </div>
             </div>
           </div>
@@ -400,8 +419,11 @@
 
             // Generate a descriptive payment note
             let paymentNote = '';
-            if (mySignups && mySignups.length > 0) {
-                const details = mySignups.map(signup => {
+            // Only include paid activities in the note
+            const paidSignups = mySignups.filter(s => s.cost > 0);
+
+            if (paidSignups && paidSignups.length > 0) {
+                const details = paidSignups.map(signup => {
                     const costPerChild = signup.cost;
                     const totalCost = costPerChild * signup.children.length;
                     const childrenList = signup.children.join(' and ');

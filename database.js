@@ -41,10 +41,24 @@ function initDatabase() {
         cost REAL DEFAULT 0,
         description TEXT,
         max_participants INTEGER DEFAULT 0,
+        allowed_ages TEXT DEFAULT 'both', -- 'child', 'adult', 'both'
         available INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `);
+    `, (err) => {
+      if (!err) {
+        // Migration: Check if allowed_ages column exists, if not add it
+        db.all("PRAGMA table_info(activities)", (err, columns) => {
+          if (!err) {
+            const hasColumn = columns.some(c => c.name === 'allowed_ages');
+            if (!hasColumn) {
+              console.log("Migrating: Adding allowed_ages column to activities");
+              db.run("ALTER TABLE activities ADD COLUMN allowed_ages TEXT DEFAULT 'both'");
+            }
+          }
+        });
+      }
+    });
 
     // Activity signups table
     db.run(`

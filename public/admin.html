@@ -141,6 +141,20 @@
                         </small>
                     </div>
 
+                    <div class="form-group">
+                        <label>Allowed Participants *</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="add-activity-allow-child" checked>
+                                <span>Children</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="add-activity-allow-adult" checked>
+                                <span>Adults</span>
+                            </label>
+                        </div>
+                    </div>
+
                     <div style="display: flex; gap: 10px;">
                         <button type="submit" class="btn btn-secondary" style="flex: 1;">Add Activity</button>
                         <button type="button" class="btn btn-warning" style="flex: 1;"
@@ -248,6 +262,20 @@
                         <small style="color: var(--leaf-green); display: block; margin-top: 5px;">
                             Set to 0 for unlimited participants. Activity becomes unavailable when full.
                         </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Allowed Participants *</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="edit-activity-allow-child">
+                                <span>Children</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="edit-activity-allow-adult">
+                                <span>Adults</span>
+                            </label>
+                        </div>
                     </div>
 
                     <div style="display: flex; gap: 10px;">
@@ -579,6 +607,7 @@
                                 <th onclick="sortActivities('time')" style="cursor: pointer;">Session Time${getSortIndicator('time')}</th>
                                 <th onclick="sortActivities('cost')" style="cursor: pointer;">Cost${getSortIndicator('cost')}</th>
                                 <th onclick="sortActivities('capacity')" style="cursor: pointer;">Capacity${getSortIndicator('capacity')}</th>
+                                <th>Ages</th>
                                 <th onclick="sortActivities('status')" style="cursor: pointer;">Status${getSortIndicator('status')}</th>
                             </tr>
                         </thead>
@@ -609,6 +638,14 @@
                                             </span>
                                             ${isFull ? ' <span style="color: var(--sunset-orange);">(FULL)</span>' : ''}
                                         ` : '<span style="color: var(--earth-brown);">Unlimited</span>'}
+                                    </td>
+                                    <td>
+                                        ${(() => {
+                            const ages = activity.allowed_ages || 'both';
+                            if (ages === 'child') return '<span class="badge" style="background:#e0f7fa; color:#006064;">👶 Child</span>';
+                            if (ages === 'adult') return '<span class="badge" style="background:#fce4ec; color:#880e4f;">🧑 Adult</span>';
+                            return '<span class="badge" style="background:var(--light-cream); color:var(--night-blue);">Both</span>';
+                        })()}
                                     </td>
                                     <td>
                                         <span class="paid-badge ${activity.available ? 'yes' : 'no'}" 
@@ -654,7 +691,12 @@
                 document.getElementById('edit-activity-time').value = activity.session_time;
                 document.getElementById('edit-activity-cost').value = activity.cost;
                 document.getElementById('edit-activity-description').value = activity.description || '';
+                document.getElementById('edit-activity-description').value = activity.description || '';
                 document.getElementById('edit-activity-max-participants').value = activity.max_participants || 0;
+
+                const ages = activity.allowed_ages || 'both';
+                document.getElementById('edit-activity-allow-child').checked = (ages === 'child' || ages === 'both');
+                document.getElementById('edit-activity-allow-adult').checked = (ages === 'adult' || ages === 'both');
 
                 // Show the modal
                 const modal = document.getElementById('edit-modal');
@@ -710,7 +752,17 @@
                             session_time,
                             cost,
                             description,
-                            max_participants
+                            cost,
+                            description,
+                            max_participants,
+                            allowed_ages: (() => {
+                                const child = document.getElementById('edit-activity-allow-child').checked;
+                                const adult = document.getElementById('edit-activity-allow-adult').checked;
+                                if (child && adult) return 'both';
+                                if (child) return 'child';
+                                if (adult) return 'adult';
+                                return 'both'; // Default fallback
+                            })()
                         })
                     });
 
@@ -1296,7 +1348,17 @@
                             session_time,
                             cost,
                             description,
-                            max_participants
+                            cost,
+                            description,
+                            max_participants,
+                            allowed_ages: (() => {
+                                const child = document.getElementById('add-activity-allow-child').checked;
+                                const adult = document.getElementById('add-activity-allow-adult').checked;
+                                if (child && adult) return 'both';
+                                if (child) return 'child';
+                                if (adult) return 'adult';
+                                return 'both'; // Default fallback
+                            })()
                         })
                     });
 
