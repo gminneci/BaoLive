@@ -36,6 +36,9 @@
                 <button class="tab-button" onclick="switchTab('payments')" id="tab-payments">
                     💰 Payments
                 </button>
+                <button class="tab-button" onclick="switchTab('backups')" id="tab-backups">
+                    💾 Backups
+                </button>
             </div>
         </div>
 
@@ -101,6 +104,24 @@
                     All payments are tracked at family level.
                 </p>
                 <div id="payments-container">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Backups -->
+        <div class="tab-content" id="content-backups" style="display: none;">
+            <div class="card">
+                <div class="flex-between mb-20">
+                    <h2 style="color: var(--forest-green);">Database Backups</h2>
+                    <button class="btn btn-secondary btn-small" onclick="createBackup()">
+                        💾 Create Backup Now
+                    </button>
+                </div>
+                <p style="color: var(--earth-brown); margin-bottom: 20px;">
+                    Backups are created automatically every day at 2:00 AM UTC. The last 30 backups are kept.
+                </p>
+                <div id="backups-container">
                     <div class="spinner"></div>
                 </div>
             </div>
@@ -333,6 +354,7 @@
             let activitySignups = [];
             let allActivities = [];
             let payments = [];
+            let backups = [];
 
             // Sorting state
             let sortState = {
@@ -357,6 +379,7 @@
                 await loadActivitySignups();
                 await loadAllActivities();
                 await loadPayments();
+                await loadBackups();
             });
 
             async function loadFamilies() {
@@ -1374,6 +1397,122 @@
                     alert('Error adding activity');
                 }
             });
+
+            // ===== BACKUP FUNCTIONS =====
+
+            async function loadBackups() {
+                try {
+                    backups = await fetchJSON(`${API_URL}/backups`);
+                    renderBackups();
+                } catch (error) {
+                    document.getElementById('backups-container').innerHTML = '<p class="alert alert-error">Error loading backups</p>';
+                }
+            }
+
+            function renderBackups() {
+                const container = document.getElementById('backups-container');
+
+                if (backups.length === 0) {
+                    container.innerHTML = '<p>No backups available yet. Create your first backup using the button above.</p>';
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Backup Date</th>
+                                    <th>File Name</th>
+                                    <th>Size</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${backups.map(backup => `
+                                    <tr>
+                                        <td>${new Date(backup.created).toLocaleString()}</td>
+                                        <td><code style="font-size: 0.85em;">${backup.name}</code></td>
+                                        <td>${formatBytes(backup.size)}</td>
+                                        <td>
+                                            <div style="display: flex; gap: 5px;">
+                                                <button class="btn btn-primary btn-small" onclick="downloadBackup('${backup.name}')">
+                                                    ⬇️ Download
+                                                </button>
+                                                <button class="btn btn-warning btn-small" onclick="deleteBackup('${backup.name}')">
+                                                    🗑️ Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p style="margin-top: 20px; color: var(--earth-brown);">
+                        <strong>Total Backups:</strong> ${backups.length} | 
+                        <strong>Total Size:</strong> ${formatBytes(backups.reduce((sum, b) => sum + b.size, 0))}
+                    </p>
+                `;
+            }
+
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+            }
+
+            async function createBackup() {
+                if (!confirm('Create a backup now?\\n\\nThis will create a copy of the current database.')) {
+                    return;
+                }
+
+                try {
+                    const result = await fetchJSON(`${API_URL}/backups`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (result.success) {
+                        showAlert(`Backup created successfully: ${result.fileName}`, 'success');
+                        await loadBackups();
+                    } else {
+                        showAlert('Error creating backup', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error creating backup:', error);
+                    showAlert('Error creating backup', 'error');
+                }
+            }
+
+            function downloadBackup(fileName) {
+                window.location.href = `${API_URL}/backups/${fileName}`;
+            }
+
+            async function deleteBackup(fileName) {
+                if (!confirm(`Delete backup "${fileName}"?\\n\\nThis action cannot be undone.`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${API_URL}/backups/${fileName}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (response.ok) {
+                        showAlert('Backup deleted successfully', 'success');
+                        await loadBackups();
+                    } else {
+                        showAlert('Error deleting backup', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error deleting backup:', error);
+                    showAlert('Error deleting backup', 'error');
+                }
+            }
         </script>
 </body>
 

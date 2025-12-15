@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
 const { db, initDatabase } = require('./database');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -52,6 +54,116 @@ const dbRun = (sql, params = []) => {
         });
     });
 };
+
+// ===== BACKUP FUNCTIONALITY =====
+const BACKUP_DIR = process.env.BACKUP_DIR || '/db_backups';
+const DB_PATH = './camping.db';
+const MAX_BACKUPS = 30; // Keep last 30 days
+
+// Ensure backup directory exists
+function ensureBackupDir() {
+    if (!fs.existsSync(BACKUP_DIR)) {
+        try {
+            fs.mkdirSync(BACKUP_DIR, { recursive: true });
+            console.log(`Created backup directory: ${BACKUP_DIR}`);
+        } catch (err) {
+            console.error(`Failed to create backup directory: ${err.message}`);
+        }
+    }
+}
+
+// Create a database backup
+async function createBackup() {
+    try {
+        ensureBackupDir();
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const backupFileName = `camping_${timestamp}.db`;
+        const backupPath = path.join(BACKUP_DIR, backupFileName);
+        
+        // Copy the database file
+        await fs.promises.copyFile(DB_PATH, backupPath);
+        console.log(`✅ Backup created: ${backupFileName}`);
+        
+        // Clean up old backups
+        await cleanupOldBackups();
+        
+        return backupFileName;
+    } catch (err) {
+        console.error(`❌ Backup failed: ${err.message}`);
+        throw err;
+    }
+}
+
+// Clean up old backups (keep only last MAX_BACKUPS)
+async function cleanupOldBackups() {
+    try {
+        const files = await fs.promises.readdir(BACKUP_DIR);
+        const backupFiles = files
+            .filter(f => f.startsWith('camping_') && f.endsWith('.db'))
+            .map(f => ({
+                name: f,
+                path: path.join(BACKUP_DIR, f),
+                mtime: fs.statSync(path.join(BACKUP_DIR, f)).mtime
+            }))
+            .sort((a, b) => b.mtime - a.mtime); // Sort newest first
+        
+        // Delete old backups beyond MAX_BACKUPS
+        const toDelete = backupFiles.slice(MAX_BACKUPS);
+        for (const file of toDelete) {
+            await fs.promises.unlink(file.path);
+            console.log(`🗑️  Deleted old backup: ${file.name}`);
+        }
+    } catch (err) {
+        console.error(`Error cleaning up backups: ${err.message}`);
+    }
+}
+
+// List all backups
+async function listBackups() {
+    try {
+        ensureBackupDir();
+        const files = await fs.promises.readdir(BACKUP_DIR);
+        const backupFiles = files
+            .filter(f => f.startsWith('camping_') && f.endsWith('.db'))
+            .map(f => {
+                const stats = fs.statSync(path.join(BACKUP_DIR, f));
+                return {
+                    name: f,
+                    size: stats.size,
+                    created: stats.mtime
+                };
+            })
+            .sort((a, b) => b.created - a.created); // Newest first
+        
+        return backupFiles;
+    } catch (err) {
+        console.error(`Error listing backups: ${err.message}`);
+        return [];
+    }
+}
+
+// Schedule daily backup at 2 AM UTC
+function scheduleDailyBackup() {
+    const checkAndBackup = () => {
+        const now = new Date();
+        const hours = now.getUTCHours();
+        const minutes = now.getUTCMinutes();
+        
+        // Run at 2:00 AM UTC (within the 2:00-2:01 window)
+        if (hours === 2 && minutes === 0) {
+            console.log('Running scheduled backup...');
+            createBackup().catch(err => console.error('Scheduled backup failed:', err));
+        }
+    };
+    
+    // Check every minute
+    setInterval(checkAndBackup, 60 * 1000);
+    console.log('📅 Daily backup scheduled for 2:00 AM UTC');
+}
+
+// Start the backup scheduler
+scheduleDailyBackup();
 
 // Protect /admin.html before static serving
 app.use((req, res, next) => {
@@ -651,6 +763,74 @@ app.get('/api/public/participants', async (req, res) => {
         });
 
         res.json(results);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// ===== BACKUP ENDPOINTS =====
+
+// List all backups (admin only)
+app.get('/api/backups', requireAdmin, async (req, res) => {
+    try {
+        const backups = await listBackups();
+        res.json(backups);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Create a backup manually (admin only)
+app.post('/api/backups', requireAdmin, async (req, res) => {
+    try {
+        const backupFileName = await createBackup();
+        res.json({ success: true, fileName: backupFileName });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Download a backup (admin only)
+app.get('/api/backups/:fileName', requireAdmin, async (req, res) => {
+    try {
+        const { fileName } = req.params;
+        
+        // Validate fileName to prevent directory traversal
+        if (!fileName.startsWith('camping_') || !fileName.endsWith('.db') || fileName.includes('/') || fileName.includes('\\')) {
+            return res.status(400).json({ error: 'Invalid file name' });
+        }
+        
+        const backupPath = path.join(BACKUP_DIR, fileName);
+        
+        // Check if file exists
+        if (!fs.existsSync(backupPath)) {
+            return res.status(404).json({ error: 'Backup not found' });
+        }
+        
+        res.download(backupPath, fileName);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete a backup (admin only)
+app.delete('/api/backups/:fileName', requireAdmin, async (req, res) => {
+    try {
+        const { fileName } = req.params;
+        
+        // Validate fileName to prevent directory traversal
+        if (!fileName.startsWith('camping_') || !fileName.endsWith('.db') || fileName.includes('/') || fileName.includes('\\')) {
+            return res.status(400).json({ error: 'Invalid file name' });
+        }
+        
+        const backupPath = path.join(BACKUP_DIR, fileName);
+        
+        // Check if file exists
+        if (!fs.existsSync(backupPath)) {
+            return res.status(404).json({ error: 'Backup not found' });
+        }
+        
+        await fs.promises.unlink(backupPath);
+        res.json({ success: true, message: 'Backup deleted' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
