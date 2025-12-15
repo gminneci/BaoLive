@@ -102,9 +102,17 @@ SQLite schema highlights:
 Set the following environment variables:
 -   `ADMIN_PASSWORD`: For accessing `/admin.html`.
 -   `SESSION_SECRET`: For signing session cookies.
--   `BACKUP_DIR`: Directory for backups (default: `/db_backups`).
+-   `DB_PATH`: Directory for the database (default: `./` for local, `/data` for Railway).
+-   `BACKUP_DIR`: Directory for backups (default: `/data`).
 
-For production on Railway, provision a persistent volume mounted at `/db_backups`.
+### Railway Deployment
+
+For production on Railway:
+1. Create a persistent volume mounted at `/data` (2 GB recommended).
+2. Set environment variable: `DB_PATH=/data`
+3. The live database will be stored at `/data/camping.db`.
+4. Backups will be created in the same `/data` directory.
+
 See [BACKUP_SETUP.md](BACKUP_SETUP.md) for step‑by‑step instructions, schedule (02:00 UTC), and retention (30 days).
 
 ## Support

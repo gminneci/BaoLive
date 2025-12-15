@@ -1,7 +1,12 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = path.join(__dirname, 'camping.db');
+// Use DB_PATH env var if set (for Railway volume), otherwise default to ./camping.db
+const dbPath = process.env.DB_PATH 
+  ? path.join(process.env.DB_PATH, 'camping.db')
+  : path.join(__dirname, 'camping.db');
+
+console.log(`📁 Database path: ${dbPath}`);
 const db = new sqlite3.Database(dbPath);
 
 // Initialize database schema

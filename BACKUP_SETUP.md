@@ -19,24 +19,33 @@ This guide explains how to set up automatic database backups for your BaoLive ap
 3. Go to the **"Variables"** tab
 4. Click on **"New Volume"** (or similar option in your Railway dashboard)
 5. Configure the volume:
-   - **Mount Path**: `/db_backups`
-   - **Size**: 1 GB (should be more than enough for 30 daily backups)
+   - **Mount Path**: `/data`
+   - **Size**: 2 GB (stores the live database and 30 daily backups)
 
 Alternatively, you can create the volume using the Railway CLI:
 
 ```bash
-railway volume create --name db-backups --mount /db_backups
+railway volume create --name bao-data --mount /data
 ```
 
-### Step 2: Deploy the Changes
+### Step 2: Set Environment Variables
 
-Once you merge the `backups` branch and deploy to Railway, the backup system will automatically:
+In your Railway dashboard, add the following environment variable:
 
-1. Create the `/db_backups` directory if it doesn't exist
-2. Start the daily backup scheduler (2:00 AM UTC)
-3. Enable the Backups tab in the admin panel
+- `DB_PATH=/data`
 
-### Step 3: Verify Setup
+This tells the app to store the live database at `/data/camping.db`. Backups will be created in the same directory.
+
+### Step 3: Deploy the Changes
+
+Once deployed to Railway, the backup system will automatically:
+
+1. Create the `/data` directory if it doesn't exist
+2. Initialize the database at `/data/camping.db`
+3. Start the daily backup scheduler (2:00 AM UTC)
+4. Enable the Backups tab in the admin panel
+
+### Step 4: Verify Setup
 
 After deployment:
 
@@ -66,10 +75,10 @@ If you prefer command-line access:
 cd /Users/gminneci/Code/BaoLive
 
 # Download a specific backup
-railway run cat /db_backups/camping_2025-12-15T02-00-00.db > local-backup.db
+railway run cat /data/camping_2025-12-15T02-00-00.db > local-backup.db
 
 # List all backups
-railway run ls -lh /db_backups
+railway run ls -lh /data
 ```
 
 ## Backup Schedule
@@ -82,9 +91,9 @@ railway run ls -lh /db_backups
 
 ### Backups not appearing?
 
-1. Check that the Railway volume is properly mounted at `/db_backups`
+1. Check that the Railway volume is properly mounted at `/data`
 2. Check Railway logs for any errors: `railway logs`
-3. Verify the backup directory exists: `railway run ls -la /db_backups`
+3. Verify the backup directory exists: `railway run ls -la /data`
 
 ### Manual backup failed?
 
@@ -100,11 +109,12 @@ railway run ls -lh /db_backups
 
 ## Environment Variables
 
-The backup system uses the following environment variable (optional):
+The following environment variables configure the database and backup system:
 
-- `BACKUP_DIR`: Directory for backups (default: `/db_backups`)
+- `DB_PATH`: Directory for the live database (default: `./` for local, should be `/data` for Railway)
+- `BACKUP_DIR`: Directory for backups (default: `/data`)
 
-You can override this in Railway if needed.
+**For Railway**, set `DB_PATH=/data` to use the persistent volume.
 
 ## File Naming Convention
 
