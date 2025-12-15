@@ -129,14 +129,8 @@
         const data = await response.json();
 
         if (data.exists) {
-          const familyResp = await fetch(`${API_URL}/families/booking/${ref}`);
-          if (familyResp.ok) {
-            const family = await familyResp.json();
-            localStorage.setItem('accessKey', family.access_key);
-            window.location.href = 'register.html';
-          } else {
-            showAlert('Error accessing registration.', 'error');
-          }
+          // Redirect to access page which will show confirmation modal
+          window.location.href = `access.html?booking_ref=${encodeURIComponent(ref)}`;
         } else {
           // Not found - Show Modal
           document.getElementById('modal-ref').textContent = ref;
