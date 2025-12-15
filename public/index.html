@@ -99,13 +99,30 @@
     <!-- Confirm Modal -->
     <div id="confirm-modal"
       style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+      <div class="card" style="max-width: 500px; width: 90%; text-align: center;">
+        <h2 style="color: var(--forest-green); margin-bottom: 20px;">✅ Registration Found</h2>
+        <p id="confirm-message" style="font-size: 1.1em; margin-bottom: 30px; color: var(--earth-brown);"></p>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+          <button class="btn btn-primary" style="font-size: 1.2em; padding: 15px 30px;" onclick="confirmAccess()">
+            👍 Yes, This Is Me
+          </button>
+          <button class="btn btn-warning" style="font-size: 1.2em; padding: 15px 30px;" onclick="closeModal()">
+            👎 No, Go Back
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Registration Modal -->
+    <div id="new-reg-modal"
+      style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
       <div class="card" style="max-width: 400px; text-align: center;">
         <h3 style="color: var(--forest-green); margin-bottom: 15px;">New Registration?</h3>
         <p>We couldn't find a registration for reference <strong id="modal-ref"></strong>.</p>
         <p>Would you like to start a new family registration?</p>
         <div style="display: flex; gap: 10px; margin-top: 20px;">
-          <button class="btn btn-primary" style="flex: 1;" onclick="proceedTxNew()">Yes, Create New</button>
-          <button class="btn btn-secondary" style="flex: 1;" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-primary" style="flex: 1;" onclick="proceedToNew()">Yes, Create New</button>
+          <button class="btn btn-secondary" style="flex: 1;" onclick="closeNewModal()">Cancel</button>
         </div>
       </div>
     </div>
@@ -115,6 +132,7 @@
   <script src="common.js"></script>
   <script>
     let currentRef = '';
+    let pendingFamily = null;
 
     async function handleBookingLookup(e) {
       e.preventDefault();
@@ -129,12 +147,32 @@
         const data = await response.json();
 
         if (data.exists) {
-          // Redirect to access page which will show confirmation modal
-          window.location.href = `access.html?booking_ref=${encodeURIComponent(ref)}`;
+          // Fetch full family data to show confirmation
+          const familyResp = await fetch(`${API_URL}/families/booking/${ref}`);
+          if (familyResp.ok) {
+            const family = await familyResp.json();
+            pendingFamily = family;
+            
+            // Get Olive/Baobab children for confirmation
+            const seftonChildren = family.members
+              .filter(m => m.is_child && (m.class === 'Baobab' || m.class === 'Olive'))
+              .map(m => m.name);
+            
+            const childrenText = seftonChildren.length > 0 
+              ? seftonChildren.join(', ')
+              : 'this family';
+            
+            document.getElementById('confirm-message').textContent = 
+              `The booking reference "${ref}" matches the registration for ${childrenText}. Is this your family?`;
+            
+            document.getElementById('confirm-modal').style.display = 'flex';
+          } else {
+            showAlert('Error accessing registration.', 'error');
+          }
         } else {
-          // Not found - Show Modal
+          // Not found - Show New Registration Modal
           document.getElementById('modal-ref').textContent = ref;
-          document.getElementById('confirm-modal').style.display = 'flex';
+          document.getElementById('new-reg-modal').style.display = 'flex';
         }
       } catch (error) {
         console.error(error);
@@ -142,12 +180,26 @@
       }
     }
 
-    function proceedTxNew() {
-      window.location.href = `register.html?new=true&ref=${encodeURIComponent(currentRef)}`;
+    function confirmAccess() {
+      if (pendingFamily) {
+        localStorage.setItem('accessKey', pendingFamily.access_key);
+        window.location.href = 'register.html';
+      }
     }
 
     function closeModal() {
       document.getElementById('confirm-modal').style.display = 'none';
+      document.getElementById('booking-ref').value = '';
+      pendingFamily = null;
+    }
+
+    function proceedToNew() {
+      window.location.href = `register.html?new=true&ref=${encodeURIComponent(currentRef)}`;
+    }
+
+    function closeNewModal() {
+      document.getElementById('new-reg-modal').style.display = 'none';
+      document.getElementById('booking-ref').value = '';
     }
   </script>
 </body>
