@@ -24,6 +24,11 @@
         <div class="card">
             <div id="alert-container"></div>
 
+            <!-- Booking Reference Display -->
+            <div id="booking-ref-banner" style="display: none; background: var(--sunset-orange); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.1em;">
+                Loading...
+            </div>
+
             <div id="login-prompt" class="hidden">
                 <p style="text-align: center; color: var(--earth-brown); margin-bottom: 20px;">
                     Please access your family registration first to sign up for activities.
@@ -100,12 +105,35 @@
                 familyData = await fetchJSON(`${API_URL}/families/access/${accessKey}`);
                 document.getElementById('activities-container').classList.remove('hidden');
                 document.getElementById('my-signups').classList.remove('hidden');
+                
+                // Update booking reference banner
+                updateBookingRefBanner();
 
             } catch (error) {
                 console.error('Error loading family data:', error);
                 showAlert('Error loading family data', 'error');
                 document.getElementById('login-prompt').classList.remove('hidden');
             }
+        }
+
+        function updateBookingRefBanner() {
+            if (!familyData) return;
+            
+            const banner = document.getElementById('booking-ref-banner');
+            const bookingRef = familyData.booking_ref;
+            
+            // Get all Olive/Baobab children
+            const seftonChildren = familyData.members
+                .filter(m => m.is_child && (m.class === 'Baobab' || m.class === 'Olive'))
+                .map(m => m.name);
+            
+            if (seftonChildren.length > 0) {
+                banner.innerHTML = `🎯 Booking Ref: <strong>${bookingRef}</strong> (${seftonChildren.join(', ')})`;
+            } else {
+                banner.innerHTML = `🎯 Booking Ref: <strong>${bookingRef}</strong>`;
+            }
+            
+            banner.style.display = 'block';
         }
 
         async function loadActivities() {

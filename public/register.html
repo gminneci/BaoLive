@@ -23,6 +23,11 @@
         <div class="card">
             <div id="alert-container"></div>
 
+            <!-- Booking Reference Display -->
+            <div id="booking-ref-banner" style="display: none; background: var(--bright-green); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; font-weight: bold; font-size: 1.1em;">
+                📝 New Registration
+            </div>
+
             <div id="school-notice"
                 style="background: var(--light-cream); padding: 15px; border-left: 5px solid var(--forest-green); margin-bottom: 20px;">
                 <p style="margin: 0; color: var(--earth-brown);">
@@ -106,6 +111,7 @@
                     // Pre-fill ref but treat as new
                     localStorage.removeItem('accessKey');
                     addMember(true);
+                    updateBookingRefBanner();
                     return;
                 }
             }
@@ -116,6 +122,7 @@
             } else {
                 // Default handling
                 if (!refParam) addMember(true);
+                updateBookingRefBanner();
             }
         });
 
@@ -123,7 +130,7 @@
             try {
                 existingFamily = await fetchJSON(`${API_URL}/families/access/${accessKey}`);
                 populateForm(existingFamily);
-                showAlert('Editing existing registration - please double check this is your family 😆', 'info');
+                showAlert('Editing existing registration - please double check that this is your family 🙏', 'info');
             } catch (error) {
                 showAlert('Error loading existing registration', 'error');
             }
@@ -144,6 +151,53 @@
             family.members.forEach(member => {
                 addMember(member.is_child === 1, member);
             });
+
+            // Update banner after members are loaded
+            updateBookingRefBanner();
+        }
+
+        function updateBookingRefBanner() {
+            const banner = document.getElementById('booking-ref-banner');
+            const bookingRef = document.getElementById('booking-ref').value;
+            
+            // Get all Olive/Baobab children
+            const seftonChildren = [];
+            const memberCards = document.querySelectorAll('.member-card.child');
+            
+            memberCards.forEach((card) => {
+                const id = card.id.split('-')[1];
+                const nameInput = document.querySelector(`input[name="member-name-${id}"]`);
+                const classRadio = document.querySelector(`input[name="member-class-${id}"]:checked`);
+                
+                if (nameInput && classRadio && (classRadio.value === 'Baobab' || classRadio.value === 'Olive')) {
+                    const name = nameInput.value.trim();
+                    if (name) {
+                        seftonChildren.push(name);
+                    }
+                }
+            });
+
+            // Update banner content
+            banner.style.display = 'block';
+            
+            if (existingFamily || bookingRef) {
+                const ref = bookingRef || 'Loading...';
+                if (seftonChildren.length > 0) {
+                    banner.innerHTML = `✏️ Editing: Booking Ref <strong>${ref}</strong> (${seftonChildren.join(', ')})`;
+                    banner.style.background = 'var(--sunset-orange)';
+                } else {
+                    banner.innerHTML = `✏️ Editing: Booking Ref <strong>${ref}</strong> (No Olive/Baobab children yet)`;
+                    banner.style.background = 'var(--sunset-orange)';
+                }
+            } else {
+                if (seftonChildren.length > 0) {
+                    banner.innerHTML = `📝 New Registration (${seftonChildren.join(', ')})`;
+                    banner.style.background = 'var(--bright-green)';
+                } else {
+                    banner.innerHTML = '📝 New Registration';
+                    banner.style.background = 'var(--bright-green)';
+                }
+            }
         }
 
         function addMember(isChild, data = null) {
@@ -194,12 +248,28 @@
       `;
 
             membersContainer.appendChild(memberCard);
+
+            // Add event listeners to update banner when name or class changes
+            if (isChild) {
+                const nameInput = memberCard.querySelector(`input[name="member-name-${memberCount}"]`);
+                const classRadios = memberCard.querySelectorAll(`input[name="member-class-${memberCount}"]`);
+                
+                nameInput.addEventListener('input', updateBookingRefBanner);
+                classRadios.forEach(radio => {
+                    radio.addEventListener('change', updateBookingRefBanner);
+                });
+            }
+
+            // Update banner after adding member
+            updateBookingRefBanner();
         }
 
         function removeMember(id) {
             const member = document.getElementById(`member-${id}`);
             if (member) {
                 member.remove();
+                // Update banner after removing member
+                updateBookingRefBanner();
             }
         }
 
@@ -244,6 +314,13 @@
             const childNames = members.filter(m => m.is_child).map(m => m.name);
             if (childNames.length === 0) {
                 showAlert('Please add at least one child', 'error');
+                return;
+            }
+
+            // Check for at least one Olive/Baobab child
+            const seftonChildren = members.filter(m => m.is_child && (m.class === 'Baobab' || m.class === 'Olive'));
+            if (seftonChildren.length === 0) {
+                showAlert('Please add at least one child in Baobab or Olive class', 'error');
                 return;
             }
 
