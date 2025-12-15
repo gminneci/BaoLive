@@ -714,7 +714,6 @@
                 document.getElementById('edit-activity-time').value = activity.session_time;
                 document.getElementById('edit-activity-cost').value = activity.cost;
                 document.getElementById('edit-activity-description').value = activity.description || '';
-                document.getElementById('edit-activity-description').value = activity.description || '';
                 document.getElementById('edit-activity-max-participants').value = activity.max_participants || 0;
 
                 const ages = activity.allowed_ages || 'both';
@@ -775,8 +774,7 @@
                             session_time,
                             cost,
                             description,
-                            cost,
-                            description,
+
                             max_participants,
                             allowed_ages: (() => {
                                 const child = document.getElementById('edit-activity-allow-child').checked;
