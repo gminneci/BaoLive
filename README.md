@@ -5,6 +5,7 @@ A web application to organize a school camping trip for Year 3 classes (Baobab a
 ## Features
 
 -   **Family Registration**: Register with Mendip Basecamp booking reference (secure lookup).
+-   **Identity Confirmation**: Popup shows your child name(s) before editing.
 -   **Activity Sign-ups**: Real-time updates as you tick/untick children.
 -   **Age Restrictions**: Administrator can limit events to "Children Only", "Adults Only", or "Both".
 -   **Family-level Payments**: Record payments per family (not per activity).
@@ -58,11 +59,17 @@ A web application to organize a school camping trip for Year 3 classes (Baobab a
 
 1.  **First Time**: Book your spot at [mendipbasecamp.com](https://mendipbasecamp.com)
 2.  **Start Registration**: Enter your **Booking Reference** on the home page.
+    - If found, you'll see a confirmation popup with your child name(s). Confirm to continue.
+    - If not found, you'll be prompted to start a new registration.
 3.  **Create Profile**: Enter family members (children and adults), camping type, and nights.
 4.  **Activities**: Sign up for activities!
     -   Some activities may be age-restricted (e.g., "Child Only").
     -   Totals and payment instructions update instantly.
 5.  **Edit**: You can return anytime by entering your Booking Reference again.
+
+Notes:
+-   At least one child from Baobab or Olive is required to proceed.
+-   Please avoid sensitive data — first names or nicknames only.
 
 ### For Organizers
 
@@ -96,6 +103,9 @@ Set the following environment variables:
 -   `ADMIN_PASSWORD`: For accessing `/admin.html`.
 -   `SESSION_SECRET`: For signing session cookies.
 -   `BACKUP_DIR`: Directory for backups (default: `/db_backups`).
+
+For production on Railway, provision a persistent volume mounted at `/db_backups`.
+See [BACKUP_SETUP.md](BACKUP_SETUP.md) for step‑by‑step instructions, schedule (02:00 UTC), and retention (30 days).
 
 ## Support
 
