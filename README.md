@@ -37,18 +37,20 @@ A web application to organize a school camping trip for Year 3 classes (Baobab a
     npm install
     ```
 
-2.  Set a session secret (recommended):
+2.  Set environment variables and start the server:
     ```bash
-    export SESSION_SECRET="your-secret-key"
-    export ADMIN_PASSWORD="your-admin-password"
+    ADMIN_PASSWORD="your-admin-password" DATA_DIR="./data" SESSION_SECRET="your-secret-key" npm start
     ```
-
-3.  Start the server:
+    
+    Or export them separately:
     ```bash
+    export ADMIN_PASSWORD="your-admin-password"
+    export DATA_DIR="./data"
+    export SESSION_SECRET="your-secret-key"
     npm start
     ```
 
-4.  Open your browser and navigate to:
+3.  Open your browser and navigate to:
     ```
     http://localhost:3001
     ```
