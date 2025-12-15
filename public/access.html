@@ -79,18 +79,23 @@
             e.preventDefault();
 
             const bookingRef = document.getElementById('booking-ref').value.trim();
+            console.log('Checking booking ref:', bookingRef);
 
             try {
                 const response = await fetch(`${API_URL}/families/booking/${bookingRef}`);
+                console.log('Response status:', response.status);
 
                 if (response.ok) {
                     const family = await response.json();
+                    console.log('Family data:', family);
                     pendingFamily = family;
                     
                     // Get Olive/Baobab children for confirmation
                     const seftonChildren = family.members
                         .filter(m => m.is_child && (m.class === 'Baobab' || m.class === 'Olive'))
                         .map(m => m.name);
+                    
+                    console.log('Sefton children:', seftonChildren);
                     
                     const childrenText = seftonChildren.length > 0 
                         ? seftonChildren.join(', ')
@@ -99,7 +104,9 @@
                     document.getElementById('confirm-message').textContent = 
                         `The booking reference "${bookingRef}" matches the registration for ${childrenText}. Is this your family?`;
                     
+                    console.log('About to show modal');
                     document.getElementById('confirm-modal').style.display = 'flex';
+                    console.log('Modal display set to flex');
                 } else {
                     showAlert('Booking reference not found. Please check and try again, or create a new registration.', 'error');
                 }
