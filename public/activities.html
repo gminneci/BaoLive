@@ -44,10 +44,7 @@
         </div>
 
         <div class="card text-center" id="save-close-section" class="hidden">
-            <div style="display: flex; gap: 10px;">
-                <button class="btn btn-primary" style="flex: 1;" onclick="applyChanges()">💾 Apply Changes</button>
-                <button class="btn btn-secondary" style="flex: 1;" onclick="exitToHome()">🏠 Exit</button>
-            </div>
+            <button class="btn" style="background: var(--bright-green); color: white; font-weight: bold;" onclick="exitToHome()">✅ Looks good - close this form</button>
         </div>
     </div>
 
@@ -63,12 +60,11 @@
             </div>
 
             <p style="color: var(--earth-brown); margin-bottom: 20px; font-size: 0.9em;">
-                <strong>Note:</strong> This is a test payment flow. In production, you will be redirected to a secure
-                payment provider.
+                ⚠️ Thank you for registering your preferences. We are unable to process payments so far in advance, but we will let you know in the WhatsApp chat when you can review & pay.
             </p>
 
             <div style="display: flex; gap: 10px;">
-                <button class="btn btn-primary" style="flex: 1;" onclick="confirmPayment()">
+                <button class="btn btn-primary" style="flex: 1; opacity: 0.5; cursor: not-allowed;" disabled>
                     ✓ Confirm Payment
                 </button>
                 <button class="btn btn-warning" style="flex: 1;" onclick="closePaymentModal()">
@@ -463,14 +459,6 @@
                 console.error('Error processing payment:', error);
                 showAlert('Error processing payment. Please try again.', 'error');
             }
-        }
-
-        async function applyChanges() {
-            // Bulk re-save isn't strictly necessary with real-time updates but good for peace of mind
-            // We just re-fetch to ensure everything is synced
-            await loadMySignups();
-            await updateFinancials();
-            showAlert('All activities synced and up to date! 🎉', 'success');
         }
 
         function exitToHome() {

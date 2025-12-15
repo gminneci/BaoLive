@@ -123,7 +123,7 @@
             try {
                 existingFamily = await fetchJSON(`${API_URL}/families/access/${accessKey}`);
                 populateForm(existingFamily);
-                showAlert('Editing existing registration', 'info');
+                showAlert('Editing existing registration - please double check this is your family 😆', 'info');
             } catch (error) {
                 showAlert('Error loading existing registration', 'error');
             }
