@@ -320,7 +320,7 @@
             // Check for at least one Olive/Baobab child
             const seftonChildren = members.filter(m => m.is_child && (m.class === 'Baobab' || m.class === 'Olive'));
             if (seftonChildren.length === 0) {
-                showAlert('Please add at least one child in Baobab or Olive class', 'error');
+                alert('⚠️ At least one Sefton Park student (Baobab or Olive class) must be added before you can proceed to activity sign-ups.\n\nPlease add a child and select either Baobab or Olive as their class.');
                 return;
             }
 
