@@ -162,8 +162,8 @@
               ? seftonChildren.join(', ')
               : 'this family';
             
-            document.getElementById('confirm-message').textContent = 
-              `The booking reference "${ref}" matches the registration for ${childrenText}. Is this your family?`;
+            document.getElementById('confirm-message').innerHTML = 
+              `The booking reference "${ref}" matches the registration for <strong>${childrenText}</strong>. Is this your family?`;
             
             document.getElementById('confirm-modal').style.display = 'flex';
           } else {
