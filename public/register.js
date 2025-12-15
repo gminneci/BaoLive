@@ -7,6 +7,17 @@ window.addEventListener('DOMContentLoaded', async () => {
   const refParam = urlParams.get('ref');
   const isNew = urlParams.get('new') === 'true';
 
+  // Set up event listeners first
+  document.getElementById('btn-add-child').addEventListener('click', () => addMember(true));
+  document.getElementById('btn-add-adult').addEventListener('click', () => addMember(false));
+
+  document.getElementById('members-container').addEventListener('click', (e) => {
+    if (e.target.classList.contains('remove-btn')) {
+      const memberId = e.target.getAttribute('data-member-id');
+      removeMember(memberId);
+    }
+  });
+
   if (refParam) {
     document.getElementById('booking-ref').value = refParam;
     if (isNew) {
@@ -23,16 +34,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!refParam) addMember(true);
     updateBookingRefBanner();
   }
-
-  document.getElementById('btn-add-child').addEventListener('click', () => addMember(true));
-  document.getElementById('btn-add-adult').addEventListener('click', () => addMember(false));
-
-  document.getElementById('members-container').addEventListener('click', (e) => {
-    if (e.target.classList.contains('remove-btn')) {
-      const memberId = e.target.getAttribute('data-member-id');
-      removeMember(memberId);
-    }
-  });
 });
 
 async function loadExistingFamily(accessKey) {
