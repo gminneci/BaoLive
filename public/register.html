@@ -95,22 +95,6 @@
         </div>
     </div>
 
-    <!-- Existing Registration Confirmation Modal -->
-    <div id="existing-reg-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
-        <div class="card" style="max-width: 500px; width: 90%; text-align: center;">
-            <h2 style="color: var(--sunset-orange); margin-bottom: 20px;">⚠️ Existing Registration Found</h2>
-            <p id="existing-reg-message" style="font-size: 1.1em; margin-bottom: 30px; color: var(--earth-brown);"></p>
-            <div style="display: flex; gap: 15px; justify-content: center;">
-                <button class="btn btn-primary" style="font-size: 1.2em; padding: 15px 30px;" onclick="confirmEditExisting()">
-                    👍 Yes, Edit This Registration
-                </button>
-                <button class="btn btn-warning" style="font-size: 1.2em; padding: 15px 30px;" onclick="cancelEditExisting()">
-                    👎 No, Go Back
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script src="common.js"></script>
     <script>
         let memberCount = 0;
@@ -140,65 +124,7 @@
                 if (!refParam) addMember(true);
                 updateBookingRefBanner();
             }
-
-            // Add booking ref check on blur
-            document.getElementById('booking-ref').addEventListener('blur', checkBookingRef);
         });
-
-        let pendingFamilyData = null;
-
-        async function checkBookingRef() {
-            const bookingRef = document.getElementById('booking-ref').value.trim();
-            
-            // Don't check if already editing this family
-            if (existingFamily && existingFamily.booking_ref === bookingRef) {
-                return;
-            }
-
-            if (!bookingRef) return;
-
-            try {
-                const checkData = await fetchJSON(`${API_URL}/families/check/${bookingRef}`);
-                if (checkData.exists) {
-                    // Fetch full family data to show children names
-                    const familyData = await fetchJSON(`${API_URL}/families/booking/${bookingRef}`);
-                    pendingFamilyData = familyData;
-                    
-                    // Get Olive/Baobab children
-                    const seftonChildren = familyData.members
-                        .filter(m => m.is_child && (m.class === 'Baobab' || m.class === 'Olive'))
-                        .map(m => m.name);
-                    
-                    const childrenText = seftonChildren.length > 0 
-                        ? seftonChildren.join(', ')
-                        : 'this family';
-                    
-                    document.getElementById('existing-reg-message').textContent = 
-                        `The booking reference "${bookingRef}" matches an existing registration for ${childrenText}. Would you like to edit this registration?`;
-                    
-                    document.getElementById('existing-reg-modal').style.display = 'flex';
-                }
-            } catch (err) {
-                console.error('Error checking booking ref:', err);
-            }
-        }
-
-        function confirmEditExisting() {
-            document.getElementById('existing-reg-modal').style.display = 'none';
-            if (pendingFamilyData) {
-                existingFamily = pendingFamilyData;
-                populateForm(pendingFamilyData);
-                // Store access key for future use
-                localStorage.setItem('accessKey', pendingFamilyData.access_key);
-            }
-        }
-
-        function cancelEditExisting() {
-            document.getElementById('existing-reg-modal').style.display = 'none';
-            document.getElementById('booking-ref').value = '';
-            pendingFamilyData = null;
-            window.location.href = 'index.html';
-        }
 
         async function loadExistingFamily(accessKey) {
             try {
@@ -399,7 +325,23 @@
             }
 
             try {
-                // Note: Booking ref uniqueness is now checked via blur event with user confirmation
+                // If it's a new registration check, verify ref uniqueness if we aren't editing
+                // But simplified: existingFamily logic handles "Editing".
+                // If !existingFamily, we are creating new.
+
+                if (!existingFamily) {
+                    try {
+                        const checkData = await fetchJSON(`${API_URL}/families/check/${bookingRef}`);
+                        if (checkData.exists) {
+                            showAlert(`Booking reference "${bookingRef}" is already registered. You are editing it now? (This shouldn't happen if flow is correct)`, 'error');
+                            // Logic edge case: user typed existing ref in "New" flow manually?
+                            return;
+                        }
+                    } catch (err) {
+                        showAlert('Error checking booking reference', 'error');
+                        return;
+                    }
+                }
 
                 const postBody = {
                     booking_ref: bookingRef,
