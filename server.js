@@ -36,17 +36,15 @@ app.use(session({
 
 
 // ===== BACKUP FUNCTIONALITY =====
-const DATA_DIR = process.env.DATA_DIR || '/data';
-const BACKUP_DIR = DATA_DIR;  // Backups stored in same directory as database
 const DB_PATH = path.join(DATA_DIR, 'camping.db');
 const MAX_BACKUPS = 30; // Keep last 30 days
 
 // Ensure backup directory exists
 function ensureBackupDir() {
-    if (!fs.existsSync(BACKUP_DIR)) {
+    if (!fs.existsSync(DATA_DIR)) {
         try {
-            fs.mkdirSync(BACKUP_DIR, { recursive: true });
-            console.log(`Created backup directory: ${BACKUP_DIR}`);
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+            console.log(`Created backup directory: ${DATA_DIR}`);
         } catch (err) {
             console.error(`Failed to create backup directory: ${err.message}`);
         }
@@ -60,7 +58,7 @@ async function createBackup() {
 
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
         const backupFileName = `camping_${timestamp}.db`;
-        const backupPath = path.join(BACKUP_DIR, backupFileName);
+        const backupPath = path.join(DATA_DIR, backupFileName);
 
         // Copy the database file
         await fs.promises.copyFile(DB_PATH, backupPath);
@@ -79,13 +77,13 @@ async function createBackup() {
 // Clean up old backups (keep only last MAX_BACKUPS)
 async function cleanupOldBackups() {
     try {
-        const files = await fs.promises.readdir(BACKUP_DIR);
+        const files = await fs.promises.readdir(DATA_DIR);
         const backupFiles = files
             .filter(f => f.startsWith('camping_') && f.endsWith('.db'))
             .map(f => ({
                 name: f,
-                path: path.join(BACKUP_DIR, f),
-                mtime: fs.statSync(path.join(BACKUP_DIR, f)).mtime
+                path: path.join(DATA_DIR, f),
+                mtime: fs.statSync(path.join(DATA_DIR, f)).mtime
             }))
             .sort((a, b) => b.mtime - a.mtime); // Sort newest first
 
@@ -104,11 +102,11 @@ async function cleanupOldBackups() {
 async function listBackups() {
     try {
         ensureBackupDir();
-        const files = await fs.promises.readdir(BACKUP_DIR);
+        const files = await fs.promises.readdir(DATA_DIR);
         const backupFiles = files
             .filter(f => f.startsWith('camping_') && f.endsWith('.db'))
             .map(f => {
-                const stats = fs.statSync(path.join(BACKUP_DIR, f));
+                const stats = fs.statSync(path.join(DATA_DIR, f));
                 return {
                     name: f,
                     size: stats.size,
@@ -780,7 +778,7 @@ app.get('/api/backups/:fileName', requireAdmin, async (req, res) => {
             return res.status(400).json({ error: 'Invalid file name' });
         }
 
-        const backupPath = path.join(BACKUP_DIR, fileName);
+        const backupPath = path.join(DATA_DIR, fileName);
 
         // Check if file exists
         if (!fs.existsSync(backupPath)) {
@@ -803,7 +801,7 @@ app.delete('/api/backups/:fileName', requireAdmin, async (req, res) => {
             return res.status(400).json({ error: 'Invalid file name' });
         }
 
-        const backupPath = path.join(BACKUP_DIR, fileName);
+        const backupPath = path.join(DATA_DIR, fileName);
 
         // Check if file exists
         if (!fs.existsSync(backupPath)) {
