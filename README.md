@@ -19,7 +19,8 @@ A web application to organize a school camping trip for Year 3 classes (Baobab a
 ## Tech Stack
 
 -   **Backend**: Node.js + Express + SQLite
--   **Frontend**: HTML + CSS + Vanilla JavaScript
+-   **Frontend**: HTML + CSS + Vanilla JavaScript (CSP-compliant, no inline scripts)
+-   **Security**: Helmet.js (CSP, referrer policy), Morgan logging, secure sessions
 -   **Database**: SQLite (file-based, easy to deploy)
 -   **Hosting**: Railway (recommended)
 
@@ -52,7 +53,7 @@ A web application to organize a school camping trip for Year 3 classes (Baobab a
 
 3.  Open your browser and navigate to:
     ```
-    http://localhost:3001
+    http://localhost:3000
     ```
 
 ## Usage
@@ -99,12 +100,23 @@ SQLite schema highlights:
 -   **Voiding**: Sets `cancelled = 1` (kept for audit).
 -   **Age Filtering**: `allowed_ages` column ('child', 'adult', 'both') controls who can sign up.
 
+## Security Features
+
+-   **Content Security Policy (CSP)**: Strict `script-src 'self'` policy - no inline scripts allowed
+-   **Secure Sessions**: httpOnly cookies, SameSite=lax, secure flag in production
+-   **Helmet.js**: Security headers including referrer-policy: no-referrer
+-   **Request Logging**: Morgan logger (dev mode in development, combined in production)
+-   **Admin Protection**: Password-protected admin dashboard
+-   **Reverse Proxy Support**: Trust proxy configured for Railway/Heroku deployments
+
 ## Admin Config
 
 Set the following environment variables:
--   `ADMIN_PASSWORD`: For accessing `/admin.html`.
--   `SESSION_SECRET`: For signing session cookies.
--   `DATA_DIR`: Directory for database and backups (default: `/data`).
+-   `ADMIN_PASSWORD`: For accessing `/admin.html` (required)
+-   `SESSION_SECRET`: For signing session cookies (optional, auto-generated if not set)
+-   `DATA_DIR`: Directory for database and backups (default: `/data`)
+-   `NODE_ENV`: Set to `production` for production mode (enables secure cookies, combined logging)
+-   `PORT`: Server port (default: `3000`)
 
 ### Railway Deployment
 

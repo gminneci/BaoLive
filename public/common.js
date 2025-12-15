@@ -1,9 +1,7 @@
 // Common utilities shared across all pages
 
-// API URL configuration
-const API_URL = window.location.hostname === 'localhost'
-    ? 'http://localhost:3001/api'
-    : 'https://baolive-production.up.railway.app/api';
+// API URL configuration - use relative URLs to work on any port
+const API_URL = '/api';
 
 // Alert utility function
 function showAlert(message, type = 'info') {

@@ -1,9 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const config = require('./config');
 
-// Use DATA_DIR env var if set (for Railway volume), otherwise default to /data
-const DATA_DIR = process.env.DATA_DIR || '/data';
-const dbPath = path.join(DATA_DIR, 'camping.db');
+const dbPath = path.join(config.dataDir, 'camping.db');
 
 console.log(`📁 Database path: ${dbPath}`);
 const db = new sqlite3.Database(dbPath);
@@ -136,4 +135,4 @@ const dbRun = (sql, params = []) => {
   });
 };
 
-module.exports = { db, initDatabase, dbGet, dbAll, dbRun };
+module.exports = { db, initDatabase, dbGet, dbAll, dbRun, DATA_DIR: config.dataDir };

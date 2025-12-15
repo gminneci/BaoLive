@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
   <title>Admin Login</title>
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
   <div class="container">
     <div class="card">
@@ -14,74 +16,31 @@
         <h2 style="color: var(--forest-green); text-align: center;">Admin Login</h2>
         <p style="text-align: center; margin-bottom: 20px; color: var(--slate-grey);">Enter the admin password</p>
       </div>
-      
-      <form id="signin-form" onsubmit="handleSubmit(event)">
-        <div id="error-message" style="display: none; background: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem;"></div>
-        
+
+      <form id="signin-form">
+        <div id="error-message"
+          style="display: none; background: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.9rem;">
+        </div>
+
         <div class="form-group">
           <label>Password</label>
-          <input 
-            type="password" 
-            id="password" 
-            placeholder="Enter admin password" 
-            required
-            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;"
-          >
+          <input type="password" id="password" placeholder="Enter admin password" required
+            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
         </div>
-        
-        <button 
-          type="submit" 
-          id="submit-btn"
-          class="btn btn-primary btn-block"
-          style="background: var(--forest-green); width: 100%;"
-        >
+
+        <button type="submit" id="submit-btn" class="btn btn-primary btn-block"
+          style="background: var(--forest-green); width: 100%;">
           Continue
         </button>
       </form>
-      
+
       <p style="text-align: center; margin-top: 20px; font-size: 0.9rem;">
         <a href="/" style="color: var(--forest-green);">← Back to Home</a>
       </p>
     </div>
   </div>
 
-  <script>
-    async function handleSubmit(event) {
-      event.preventDefault();
-      
-      const password = document.getElementById('password').value;
-      const errorDiv = document.getElementById('error-message');
-      const submitBtn = document.getElementById('submit-btn');
-      
-      errorDiv.style.display = 'none';
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Signing in...';
-      
-      try {
-        const response = await fetch('/api/auth/signin', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ password })
-        });
-        
-        if (response.ok) {
-          window.location.href = '/admin.html';
-        } else {
-          const data = await response.json();
-          errorDiv.textContent = data.error || 'Invalid password';
-          errorDiv.style.display = 'block';
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Continue';
-        }
-      } catch (error) {
-        errorDiv.textContent = 'Sign in failed. Please try again.';
-        errorDiv.style.display = 'block';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Continue';
-      }
-    }
-  </script>
+  <script src="login.js"></script>
 </body>
+
 </html>
