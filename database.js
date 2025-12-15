@@ -1,8 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-// Use DATA_DIR env var if set (for Railway volume), otherwise default to current directory
-const DATA_DIR = process.env.DATA_DIR || __dirname;
+// Use DATA_DIR env var if set (for Railway volume), otherwise default to /data
+const DATA_DIR = process.env.DATA_DIR || '/data';
 const dbPath = path.join(DATA_DIR, 'camping.db');
 
 console.log(`📁 Database path: ${dbPath}`);

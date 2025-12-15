@@ -102,7 +102,7 @@ SQLite schema highlights:
 Set the following environment variables:
 -   `ADMIN_PASSWORD`: For accessing `/admin.html`.
 -   `SESSION_SECRET`: For signing session cookies.
--   `DATA_DIR`: Directory for database and backups (default: current directory for local, `/data` for Railway).
+-   `DATA_DIR`: Directory for database and backups (default: `/data`).
 
 ### Railway Deployment
 

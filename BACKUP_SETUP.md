@@ -111,7 +111,7 @@ railway run ls -lh /data
 
 The following environment variable configures the database and backup system:
 
-- `DATA_DIR`: Directory for both the live database and backups (default: current directory for local, `/data` for Railway)
+- `DATA_DIR`: Directory for both the live database and backups (default: `/data`)
 
 **For Railway**, set `DATA_DIR=/data` to use the persistent volume.
 
