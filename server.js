@@ -30,10 +30,9 @@ app.use(session({
 
 
 // ===== BACKUP FUNCTIONALITY =====
-const BACKUP_DIR = process.env.BACKUP_DIR || '/data';
-const DB_PATH = process.env.DB_PATH 
-  ? path.join(process.env.DB_PATH, 'camping.db')
-  : './camping.db';
+const DATA_DIR = process.env.DATA_DIR || '/data';
+const BACKUP_DIR = DATA_DIR;  // Backups stored in same directory as database
+const DB_PATH = path.join(DATA_DIR, 'camping.db');
 const MAX_BACKUPS = 30; // Keep last 30 days
 
 // Ensure backup directory exists

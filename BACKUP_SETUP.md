@@ -32,9 +32,9 @@ railway volume create --name bao-data --mount /data
 
 In your Railway dashboard, add the following environment variable:
 
-- `DB_PATH=/data`
+- `DATA_DIR=/data`
 
-This tells the app to store the live database at `/data/camping.db`. Backups will be created in the same directory.
+This tells the app to store the live database and backups at `/data/camping.db` and `/data/camping_*.db`.
 
 ### Step 3: Deploy the Changes
 
@@ -109,12 +109,11 @@ railway run ls -lh /data
 
 ## Environment Variables
 
-The following environment variables configure the database and backup system:
+The following environment variable configures the database and backup system:
 
-- `DB_PATH`: Directory for the live database (default: `./` for local, should be `/data` for Railway)
-- `BACKUP_DIR`: Directory for backups (default: `/data`)
+- `DATA_DIR`: Directory for both the live database and backups (default: current directory for local, `/data` for Railway)
 
-**For Railway**, set `DB_PATH=/data` to use the persistent volume.
+**For Railway**, set `DATA_DIR=/data` to use the persistent volume.
 
 ## File Naming Convention
 
