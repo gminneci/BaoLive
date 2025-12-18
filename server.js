@@ -90,6 +90,16 @@ app.use((req, res, next) => {
     next();
 });
 
+// Handle missing icon files gracefully (prevents 404 spam in logs)
+app.get(['/apple-touch-icon.png', '/apple-touch-icon-precomposed.png', '/favicon.ico'], (req, res, next) => {
+    if (req.path === '/favicon.ico') {
+        // We have a favicon, let it through to static handler
+        return next();
+    }
+    // For missing apple icons, return 204 No Content
+    res.status(204).end();
+});
+
 // Static files
 app.use(express.static('public'));
 
