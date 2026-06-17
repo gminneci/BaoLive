@@ -2,6 +2,10 @@
 
 A web application to organize a school camping trip for Year 3 classes (Baobab and Olive) to Mendip Basecamp.
 
+## Live App
+
+🌐 **Production URL**: https://baolive-production.up.railway.app/
+
 ## Features
 
 -   **Family Registration**: Register with Mendip Basecamp booking reference (secure lookup).
@@ -119,6 +123,8 @@ Set the following environment variables:
 -   `PORT`: Server port (default: `3000`)
 
 ### Railway Deployment
+
+**Production URL**: https://baolive-production.up.railway.app/
 
 For production on Railway:
 1. Create a persistent volume mounted at `/data` (2 GB recommended).

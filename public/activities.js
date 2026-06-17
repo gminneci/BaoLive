@@ -172,7 +172,11 @@ async function saveActivitySelection(activityId) {
     });
 
     if (!response.ok) {
-      showAlert('Error saving activity selection', 'error');
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.message || errorData.error || 'Error saving activity selection';
+      showAlert(errorMessage, 'error');
+      // Reload to reset checkboxes to previous state
+      await loadMySignups();
       return;
     }
 
